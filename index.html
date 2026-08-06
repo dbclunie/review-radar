@@ -389,6 +389,11 @@ let scores = {};
 let dialIdx = 0;
 const SCALE = 5;
 
+// ── ESCAPING ──────────────────────────────────────────────────────────────
+function esc(str){
+  return String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 // ── RADAR SVG ─────────────────────────────────────────────────────────────
 function truncateLabel(str,maxLen=11){
   return str.length>maxLen ? str.slice(0,maxLen-1)+'\u2026' : str;
@@ -420,8 +425,8 @@ function radarSVG(axes, scores){
     const active = dialIdx===i;
     const label=truncateLabel(a);
     const fs=label.length>8?9:11;
-    const titleTag=label!==a?`<title>${a}</title>`:'';
-    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="${active?'#E8E6DE':'#8B8880'}" font-family="'Special Elite',monospace" font-weight="${active?'600':'400'}">${titleTag}${label}</text>`;
+    const titleTag=label!==a?`<title>${esc(a)}</title>`:'';
+    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="${active?'#E8E6DE':'#8B8880'}" font-family="'Special Elite',monospace" font-weight="${active?'600':'400'}">${titleTag}${esc(label)}</text>`;
   });
   // outer scale label
   const tp=pt(0,rMax); svg+=`<text x="${tp[0]+3}" y="${tp[1]}" font-size="10" fill="#57544C" font-family="'Special Elite',monospace">${SCALE}</text>`;
@@ -694,7 +699,7 @@ function renderConfirm(){
   ax.forEach(a=>{
     const v=scores[a]||0;
     bars.innerHTML+=`<div class="bar-row">
-      <span class="bar-label">${a}</span>
+      <span class="bar-label">${esc(a)}</span>
       <span class="bar-track"><span class="bar-fill" style="width:${v/SCALE*100}%"></span></span>
       <span class="bar-val">${v}</span>
     </div>`;
@@ -816,7 +821,7 @@ function updateLocationDisplay(){
     const {lat,lng,address}=curLocation;
     const mapsUrl=`https://maps.google.com/?q=${lat},${lng}`;
     const label=address||`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    el.innerHTML=`<a href="${mapsUrl}" target="_blank" style="color:#F2A623;text-decoration:none;display:block;padding:2px 0">\uD83D\uDCCD ${label}</a>`;
+    el.innerHTML=`<a href="${esc(mapsUrl)}" target="_blank" style="color:#F2A623;text-decoration:none;display:block;padding:2px 0">\uD83D\uDCCD ${esc(label)}</a>`;
     if(mapEl){ mapEl.style.display='block'; renderConfirmMiniMap(); }
   } else {
     el.textContent='';
@@ -1089,7 +1094,7 @@ function renderSavedReviewsList(){
     const starsHtml=rec.stars&&rec.curStars?`<span style="margin-left:3px">${starSVG(5,rec.curStars,11,null)}</span>`:'';
 
     row.innerHTML=`<div style="flex:1;min-width:0">
-        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:bold">${rec.catLabel}${rec.item?' \u00b7 '+rec.item:''}</div>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:bold">${esc(rec.catLabel)}${rec.item?' \u00b7 '+esc(rec.item):''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:2px;padding-left:8px">
           <span style="display:inline-flex;align-items:center;gap:3px">${scoreBadge}${starsHtml}</span>
           <span style="color:#7A7670;white-space:nowrap;margin-left:auto;font-size:0.85em">${dateStr}</span>
@@ -1157,7 +1162,7 @@ function viewSavedReview(id){
     const {lat,lng}=rec.location;
     const mapsUrl=`https://maps.google.com/?q=${lat},${lng}`;
     const label=rec.location.address||`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    locEl.innerHTML=`<a href="${mapsUrl}" target="_blank" style="color:#F2A623;text-decoration:none;display:block;padding:2px 0">\uD83D\uDCCD ${label}</a>`;
+    locEl.innerHTML=`<a href="${esc(mapsUrl)}" target="_blank" style="color:#F2A623;text-decoration:none;display:block;padding:2px 0">\uD83D\uDCCD ${esc(label)}</a>`;
   }
   else locEl.textContent='';
 
@@ -1166,7 +1171,7 @@ function viewSavedReview(id){
   rec.axes.forEach(a=>{
     const v=rec.scores[a]||0;
     bars.innerHTML+=`<div class="bar-row">
-      <span class="bar-label">${a}</span>
+      <span class="bar-label">${esc(a)}</span>
       <span class="bar-track"><span class="bar-fill" style="width:${v/SCALE*100}%"></span></span>
       <span class="bar-val">${v}</span>
     </div>`;
@@ -1732,8 +1737,15 @@ function showFieldError(inp,msg){
 }
 function removeAxis(a){ newAxes=newAxes.filter(x=>x!==a); renderNewAxes(); }
 function renderNewAxes(){
-  document.getElementById('new-axes-chips').innerHTML=
-    newAxes.map(a=>`<div class="chip rm" onclick="removeAxis('${a}')">${a}</div>`).join('');
+  const wrap=document.getElementById('new-axes-chips');
+  wrap.innerHTML='';
+  newAxes.forEach(a=>{
+    const chip=document.createElement('div');
+    chip.className='chip rm';
+    chip.textContent=a;
+    chip.onclick=()=>removeAxis(a);
+    wrap.appendChild(chip);
+  });
   document.getElementById('axis-count').textContent=newAxes.length+'/5';
 }
 function checkCatNameDupe(val){
