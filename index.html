@@ -140,7 +140,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.20</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.21</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -588,6 +588,7 @@ function pickCat(cat){
   curMapSnapshot=null;
   locationPending=false;
   currentReviewSaved=false;
+  currentReviewId=null;
   document.getElementById('hdr-item-cat').textContent=cat.label.toUpperCase();
   document.getElementById('item-screen-label').textContent=`add a ${cat.label} review`;
   document.getElementById('hdr-item-live').textContent='';
@@ -991,6 +992,7 @@ function buildReviewPayload(){
 }
 
 let currentReviewSaved=false;
+let currentReviewId=null;
 function recordCurrentReview(cat,payload,scoreText){
   if(currentReviewSaved) return;
   currentReviewSaved=true;
@@ -1004,16 +1006,14 @@ function recordCurrentReview(cat,payload,scoreText){
     location:payload.location||null,
     photoDataUrl:null
   };
+  currentReviewId=rec.id;
   savedReviews.unshift(rec);
   saveSavedReviews(savedReviews);
   renderSavedReviewsList();
-  // Store photo as data URL in background if attached (async, doesn't block save)
+  // Photo may already be attached if user picked it before this fired
   if(attachedPhoto){
     const reader=new FileReader();
-    reader.onload=()=>{
-      rec.photoDataUrl=reader.result;
-      saveSavedReviews(savedReviews);
-    };
+    reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
     reader.readAsDataURL(attachedPhoto);
   }
 }
@@ -1489,15 +1489,23 @@ function handlePhotoSelect(e){
       <span style="font-size:0.75em;color:#A8A49E;flex:1">photo attached</span>
       <span tabindex="0" style="font-size:0.75em;color:#E24B4A;cursor:pointer" onclick="removeAttachedPhoto()">remove</span>
     </div>`;
+    // Update already-saved record's photo since recordCurrentReview fires before photo attach
+    updateSavedRecordPhoto(reader.result);
   };
   reader.onerror=()=>{
     wrap.innerHTML=`<div style="font-size:0.75em;color:#E24B4A;margin-top:8px">couldn't preview photo, but it's still attached</div>`;
   };
   reader.readAsDataURL(f);
 }
+function updateSavedRecordPhoto(dataUrl){
+  if(!currentReviewSaved) return;
+  const rec=savedReviews.find(r=>r.id===currentReviewId);
+  if(rec){ rec.photoDataUrl=dataUrl; saveSavedReviews(savedReviews); }
+}
 function removeAttachedPhoto(){
   attachedPhoto=null;
   document.getElementById('attach-preview').innerHTML='';
+  updateSavedRecordPhoto(null);
   document.getElementById('photo-input-camera').value='';
   document.getElementById('photo-input-gallery').value='';
 }
