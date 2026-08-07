@@ -140,7 +140,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.21</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.22</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -321,7 +321,18 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
   <div style="display:flex;gap:8px;margin-top:8px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-cat')">back</div>
-    <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#E24B4A" onclick="deleteSavedReview(viewingReviewId)">delete</div>
+    <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#E24B4A" onclick="showConfirmModal('Delete this review? This cannot be undone.',()=>deleteSavedReview(viewingReviewId))">delete</div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE MODAL -->
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#1E1C18;border:0.5px solid #3A3833;border-radius:10px;padding:20px;max-width:340px;width:100%">
+    <div id="confirm-modal-text" style="font-size:0.95em;color:#E8E6DE;margin-bottom:18px;text-align:center;line-height:1.5"></div>
+    <div style="display:flex;gap:8px">
+      <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeConfirmModal()">cancel</div>
+      <div tabindex="0" class="btn" style="flex:1;text-align:center;background:#E24B4A;color:#fff" onclick="confirmModalYes()">delete</div>
+    </div>
   </div>
 </div>
 
@@ -458,7 +469,7 @@ function renderCatSelect(){
     bar.innerHTML=`<span style="color:#A8A49E">${selectedCatIds.size} selected</span>
       <span style="display:flex;gap:14px">
         <span tabindex="0" style="color:#A8A49E;cursor:pointer" onclick="exitCatSelectMode()">cancel</span>
-        <span tabindex="0" style="color:#E24B4A;cursor:pointer" onclick="deleteSelectedCats()">delete</span>
+        <span tabindex="0" style="color:#E24B4A;cursor:pointer" onclick="showConfirmModal('Delete '+selectedCatIds.size+' categor'+(selectedCatIds.size===1?'y':'ies')+'? Their saved reviews will remain, but you will not be able to create new reviews for them.',deleteSelectedCats)">delete</span>
       </span>`;
     panel.appendChild(bar);
   }
@@ -1071,7 +1082,7 @@ function renderSavedReviewsList(){
     bar.innerHTML=`<span>${selectedReviewIds.size} selected</span>
       <span style="display:flex;gap:10px">
         <span tabindex="0" style="color:#A8A49E;cursor:pointer" onclick="exitSelectMode()">cancel</span>
-        <span tabindex="0" style="color:#E24B4A;cursor:pointer" onclick="deleteSelectedReviews()">delete</span>
+        <span tabindex="0" style="color:#E24B4A;cursor:pointer" onclick="showConfirmModal('Delete '+selectedReviewIds.size+' review'+(selectedReviewIds.size===1?'':'s')+'? This cannot be undone.',deleteSelectedReviews)">delete</span>
       </span>`;
     listEl.appendChild(bar);
   }
@@ -1575,6 +1586,22 @@ async function saveReviewImage(btn){
   } else {
     btnFeedback(btn,'\u2713 recorded','#97C459','#1a2e0a',2500);
   }
+}
+
+let confirmModalCallback=null;
+function showConfirmModal(text,onYes){
+  document.getElementById('confirm-modal-text').textContent=text;
+  confirmModalCallback=onYes;
+  document.getElementById('confirm-modal').style.display='flex';
+}
+function closeConfirmModal(){
+  document.getElementById('confirm-modal').style.display='none';
+  confirmModalCallback=null;
+}
+function confirmModalYes(){
+  const cb=confirmModalCallback;
+  closeConfirmModal();
+  if(cb) cb();
 }
 
 function reset(){ curCat=null; scores={}; dialIdx=0; curItem=''; preGeneratedFile=null; preGeneratedMsg=null; preGeneratedStamp=null; removeAttachedPhoto(); closeCatDD(); renderCatSelect(); showScreen('s-cat'); }
