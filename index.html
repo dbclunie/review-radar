@@ -140,7 +140,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.19</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.20</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -308,14 +308,9 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div id="view-result"></div>
   <div id="view-location" style="font-size:0.75em;text-align:center;margin-top:4px"></div>
   <div id="view-map-preview" style="display:none;height:120px;border-radius:6px;overflow:hidden;margin-top:6px;border:0.5px solid #33312C"></div>
-
-  <div style="display:flex;gap:8px;margin-top:10px">
-    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('view-photo-camera').click()">take photo</div>
-    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('view-photo-gallery').click()">from gallery</div>
+  <div id="view-photo-display" style="display:none;margin-top:10px;text-align:center">
+    <img id="view-photo-img" style="max-width:100%;border-radius:6px;cursor:pointer" onclick="window.open(this.src,'_blank')">
   </div>
-  <input type="file" id="view-photo-camera" accept="image/*" capture="environment" style="display:none" onchange="handleViewPhotoSelect(event)">
-  <input type="file" id="view-photo-gallery" accept="image/*" style="display:none" onchange="handleViewPhotoSelect(event)">
-  <div id="view-attach-preview"></div>
 
   <div style="margin-top:8px">
     <button class="send-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px" onclick="shareViewedReview(this)">
@@ -1005,11 +1000,22 @@ function recordCurrentReview(cat,payload,scoreText){
     scores:{...payload.axes}, item:payload.item, scoreText,
     total:payload.total, max:payload.max, grade:payload.grade,
     intensity:payload.intensity, harmony:payload.harmony,
-    curStars:payload.stars||null
+    curStars:payload.stars||null,
+    location:payload.location||null,
+    photoDataUrl:null
   };
   savedReviews.unshift(rec);
   saveSavedReviews(savedReviews);
   renderSavedReviewsList();
+  // Store photo as data URL in background if attached (async, doesn't block save)
+  if(attachedPhoto){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      rec.photoDataUrl=reader.result;
+      saveSavedReviews(savedReviews);
+    };
+    reader.readAsDataURL(attachedPhoto);
+  }
 }
 
 function renderSavedReviewsList(){
@@ -1196,11 +1202,15 @@ function viewSavedReview(id){
     </div>`;
   }
 
-  // reset photo state for this view
-  viewAttachedPhoto=null;
-  document.getElementById('view-attach-preview').innerHTML='';
-  document.getElementById('view-photo-camera').value='';
-  document.getElementById('view-photo-gallery').value='';
+  // show stored photo if present, clickable to open full size
+  const photoDisplay=document.getElementById('view-photo-display');
+  const photoImg=document.getElementById('view-photo-img');
+  if(rec.photoDataUrl){
+    photoDisplay.style.display='block';
+    photoImg.src=rec.photoDataUrl;
+  } else {
+    photoDisplay.style.display='none';
+  }
 
   // mini-map
   const viewMapEl=document.getElementById('view-map-preview');
@@ -1224,22 +1234,15 @@ function viewSavedReview(id){
   showScreen('s-view');
 }
 
-// ── VIEW SCREEN PHOTO / SHARE / EMAIL ─────────────────────────────────
-let viewAttachedPhoto=null;
-function handleViewPhotoSelect(e){
-  const f=e.target.files[0];
-  if(!f) return;
-  viewAttachedPhoto=f;
-  const wrap=document.getElementById('view-attach-preview');
-  const reader=new FileReader();
-  reader.onload=()=>{
-    wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-      <img src="${reader.result}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:0.5px solid #3A3833">
-      <span style="font-size:0.75em;color:#A8A49E;flex:1">photo attached</span>
-      <span tabindex="0" style="font-size:0.75em;color:#E24B4A;cursor:pointer" onclick="viewAttachedPhoto=null;document.getElementById('view-attach-preview').innerHTML=''">remove</span>
-    </div>`;
-  };
-  reader.readAsDataURL(f);
+// ── VIEW SCREEN SHARE (uses stored photo/location from the record) ─────
+function dataUrlToFile(dataUrl,filename){
+  if(!dataUrl) return null;
+  const [meta,b64]=dataUrl.split(',');
+  const mime=meta.match(/:(.*?);/)[1];
+  const bin=atob(b64);
+  const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new File([arr],filename,{type:mime});
 }
 
 async function withViewRecord(fn){
@@ -1250,7 +1253,7 @@ async function withViewRecord(fn){
   scores={...rec.scores};
   curItem=rec.item||'';
   curStars=rec.curStars||3;
-  attachedPhoto=viewAttachedPhoto;
+  attachedPhoto=rec.photoDataUrl?dataUrlToFile(rec.photoDataUrl,'photo.jpg'):null;
   try{ await fn(rec); }
   finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhoto=prevPhoto; }
 }
@@ -1270,13 +1273,13 @@ async function shareViewedReview(btn){
         if(err.name==='AbortError') return;
         btnFeedback(btn,'share unavailable','#57544C','#E8E6DE',2000);
       }
-      const result=await generateReviewFile(cat,scoreText,viewAttachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
+      const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
       if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
       downloadBlob(new Blob([msg],{type:'text/plain'}),`review_radar_${cat.id}_${stamp}_payload.txt`);
       return;
     }
 
-    const result=await generateReviewFile(cat,scoreText,viewAttachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
+    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
     if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
     downloadBlob(new Blob([msg],{type:'text/plain'}),`review_radar_${cat.id}_${stamp}_payload.txt`);
     btnFeedback(btn,'files downloaded','#57544C','#E8E6DE',2500);
@@ -1287,7 +1290,7 @@ async function emailViewedReview(btn){
   withViewRecord(async rec=>{
     const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
     const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
-    const result=await generateReviewFile(cat,scoreText,viewAttachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
+    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
     if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
     const payloadBlob=new Blob([msg],{type:'text/plain'});
     downloadBlob(payloadBlob,`review_radar_${cat.id}_${stamp}_payload.txt`);
