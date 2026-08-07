@@ -92,7 +92,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .star-compact .star-icon:first-child{margin-left:0}
 .star-compact .star-stack{gap:0}
 .star-icon{cursor:pointer}
-.mode-example{background:#1E1C18;border:0.5px solid #33312C;border-radius:8px;padding:5px 6px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s;min-width:0;max-height:120px;overflow:hidden;font-size:0.8em}
+.mode-example{background:#1E1C18;border:0.5px solid #33312C;border-radius:8px;padding:5px 6px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s;min-width:0;font-size:0.72em}
 .mode-example.sel{border-color:#F2A623}
 .mode-example.unsel{opacity:0.5}
 .field-label{font-size:0.85em;color:#A8A49E;margin-bottom:4px}
@@ -140,7 +140,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.18</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.19</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -192,6 +192,8 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       <div class="star-toggle-box" id="new-cat-location-box"></div>
       <span>use location (either type)</span>
     </div>
+  </div>
+  <div style="flex-shrink:0">
     <div style="display:flex;justify-content:space-between;align-items:baseline">
       <div class="field-label">axes</div>
       <div class="field-label" id="axis-count">0/5</div>
