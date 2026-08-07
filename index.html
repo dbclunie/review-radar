@@ -140,7 +140,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.22</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.23</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -200,13 +200,13 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </div>
     <div class="axis-chips" id="new-axes-chips"></div>
     <div style="display:flex;gap:8px;margin-bottom:4px">
-      <div style="flex:1;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;padding:8px">
+      <div style="flex:1;min-width:0;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;padding:8px;overflow:hidden">
         <div class="field-input" id="new-axis-input" contenteditable="true" role="textbox"
           data-placeholder="axis name"
-          style="outline:none;white-space:nowrap;overflow:hidden;background:transparent;padding-top:6px"
+          style="outline:none;white-space:nowrap;overflow-x:auto;background:transparent;padding-top:6px;width:100%;scrollbar-width:none"
           onkeydown="if(event.key==='Enter'){addAxis();event.preventDefault();}"></div>
       </div>
-      <div tabindex="0" class="btn" onclick="addAxis()" style="padding:0 14px;display:flex;align-items:center">+</div>
+      <div tabindex="0" class="btn" style="flex-shrink:0;padding:0 14px;display:flex;align-items:center" onclick="addAxis()">+</div>
     </div>
     <div id="axis-hint" style="font-size:0.7em;color:#7A7670;margin-bottom:8px">try: crust · sauce · cheese · toppings · value</div>
   </div>
@@ -402,6 +402,26 @@ function truncateLabel(str,maxLen=11){
   return str.length>maxLen ? str.slice(0,maxLen-1)+'\u2026' : str;
 }
 
+function showAxisLabelTooltip(e){
+  e.stopPropagation();
+  const full=e.target.getAttribute('data-full');
+  if(!full) return;
+  let toast=document.getElementById('axis-label-toast');
+  if(!toast){
+    toast=document.createElement('div');
+    toast.id='axis-label-toast';
+    toast.style.cssText='position:fixed;background:#1E1C18;color:#E8E6DE;border:0.5px solid #F2A623;border-radius:6px;padding:6px 12px;font-size:0.8em;font-family:\'Special Elite\',monospace;z-index:200;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.4)';
+    document.body.appendChild(toast);
+  }
+  toast.textContent=full;
+  const rect=e.target.getBoundingClientRect();
+  toast.style.left=Math.max(8,rect.left-toast.offsetWidth/2+rect.width/2)+'px';
+  toast.style.top=(rect.top-36)+'px';
+  toast.style.display='block';
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer=setTimeout(()=>{ toast.style.display='none'; },2000);
+}
+
 function radarSVG(axes, scores){
   const n = axes.length;
   const cx=120, cy=90, rMax=58, rStep=rMax/SCALE;
@@ -428,8 +448,9 @@ function radarSVG(axes, scores){
     const active = dialIdx===i;
     const label=truncateLabel(a);
     const fs=label.length>8?9:11;
-    const titleTag=label!==a?`<title>${a}</title>`:'';
-    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="${active?'#E8E6DE':'#8B8880'}" font-family="'Special Elite',monospace" font-weight="${active?'600':'400'}">${titleTag}${label}</text>`;
+    const isTrunc=label!==a;
+    const titleTag=isTrunc?`<title>${a}</title>`:'';
+    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="${active?'#E8E6DE':'#8B8880'}" font-family="'Special Elite',monospace" font-weight="${active?'600':'400'}"${isTrunc?` data-full="${a}" onclick="showAxisLabelTooltip(event)" style="cursor:pointer"`:''}>${titleTag}${label}</text>`;
   });
   // outer scale label
   const tp=pt(0,rMax); svg+=`<text x="${tp[0]+3}" y="${tp[1]}" font-size="10" fill="#57544C" font-family="'Special Elite',monospace">${SCALE}</text>`;
@@ -1880,6 +1901,11 @@ document.addEventListener('wheel',(e)=>{
   e.preventDefault();
   stepCatDD(e.deltaY<0?1:-1);
 },{passive:false});
+
+document.addEventListener('click',(e)=>{
+  const toast=document.getElementById('axis-label-toast');
+  if(toast && toast.style.display==='block' && e.target.id!=='axis-label-toast') toast.style.display='none';
+});
 
 document.addEventListener('click',(e)=>{
   if(activeScreen()!=='s-dial') return;
