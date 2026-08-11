@@ -104,6 +104,26 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 #new-cat-name.err::before{color:#E24B4A}
 #new-cat-name.err{animation:blink-red .35s ease 2}
 @keyframes blink-red{0%,100%{border-color:#3A3833;background:#26241F}50%{border-color:#E24B4A;background:#3a1f1f}}
+
+/* ── FULL MONTH STREAK CELEBRATION ─────────────────────────────────── */
+@keyframes sc-crush-out{0%{opacity:1;transform:scale(1) rotate(0deg)}100%{opacity:0;transform:scale(2.6) rotate(-10deg)}}
+@keyframes sc-count-in{0%{opacity:0;transform:scale(0.2)}45%{opacity:1;transform:scale(1.35)}70%{transform:scale(0.92)}100%{opacity:1;transform:scale(1)}}
+@keyframes sc-impact-ring{0%{opacity:0.9;transform:scale(0.3);border-width:4px}100%{opacity:0;transform:scale(2.4);border-width:0.5px}}
+@keyframes sc-shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-3px,1px)}40%{transform:translate(3px,-1px)}60%{transform:translate(-2px,1px)}80%{transform:translate(2px,-1px)}}
+@keyframes sc-pentagon-pulse{0%,100%{filter:drop-shadow(0 0 8px rgba(242,166,35,0.6))}50%{filter:drop-shadow(0 0 22px rgba(255,232,176,0.95))}}
+@keyframes sc-twinkle{0%,100%{opacity:0.1;transform:scale(0.4)}50%{opacity:1;transform:scale(1)}}
+@keyframes sc-radiate{0%{opacity:0.8;transform:scale(0.6)}100%{opacity:0;transform:scale(2.2)}}
+@keyframes sc-bubble-grow{0%{opacity:0;transform:scale(0.3)}25%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}80%{opacity:1;transform:scale(1.25) rotate(-4deg)}88%{opacity:1;transform:scale(0.7) rotate(6deg)}100%{opacity:0;transform:scale(1.6) rotate(-10deg)}}
+@keyframes sc-shard-fly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--sx),var(--sy)) scale(0.2)}}
+@keyframes sc-letter-reveal{0%{opacity:0;transform:scale(0.3) translateY(6px)}60%{opacity:1;transform:scale(1.2) translateY(0)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes sc-title-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
+@keyframes sc-number-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+@keyframes sc-confetti-return{0%{opacity:1}100%{opacity:0}}
+.sc-sparkle{position:absolute;background:#FFE8B0;clip-path:polygon(50% 0%,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0% 50%,39% 39%);animation:sc-twinkle ease-in-out infinite;z-index:1}
+.sc-radiate{position:absolute;border:2px solid #F2A623;border-radius:50%;animation:sc-radiate ease-out infinite;z-index:1}
+.sc-letter-bubble{position:absolute;border-radius:50%;background:#F2A623;border:1px solid #FFE8B0;display:flex;align-items:center;justify-content:center;color:#412402;font-weight:bold;z-index:1;animation:sc-bubble-grow ease-in-out forwards}
+.sc-text-backdrop{background:rgba(10,10,9,0.6);border-radius:5px;padding:2px 8px;display:inline-block}
+.sc-dismissed *{animation-play-state:paused !important}
 .field-input.err,.kb-input.err{animation:blink-red .35s ease 2}
 .field-input.err::placeholder,.kb-input.err::placeholder{color:#E24B4A;opacity:1}
 .field-input:focus{border-color:#F2A623}
@@ -140,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.26</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.27</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -375,7 +395,18 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 </div>
+
+<!-- FULL MONTH STREAK CELEBRATION -->
+<div id="streak-celebration" style="display:none;position:fixed;inset:0;background:#0a0a09;z-index:200;align-items:center;justify-content:center;overflow:hidden">
+  <div id="sc-stage" style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+    <div id="sc-title-area" style="display:flex;flex-wrap:wrap;justify-content:center;gap:1px;max-width:300px;z-index:20;margin-bottom:14px;min-height:16px"></div>
+    <div id="sc-pentagon-holder" style="position:relative;width:240px;height:240px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1"></div>
+    <div id="sc-caption" style="position:relative;z-index:20;text-align:center;min-height:14px;margin-top:16px"></div>
+  </div>
+</div>
+
 <script>
+
 // ── REGISTRY ──────────────────────────────────────────────────────────────
 const DEFAULT_CATS = [];
 
@@ -1146,12 +1177,251 @@ function recordCurrentReview(cat,payload,scoreText){
   savedReviews.unshift(rec);
   saveSavedReviews(savedReviews);
   renderSavedReviewsList();
+  checkFullMonthStreak();
   // Photo may already be attached if user picked it before this fired
   if(attachedPhoto){
     const reader=new FileReader();
     reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
     reader.readAsDataURL(attachedPhoto);
   }
+}
+
+// ── STREAK CALCULATION ──────────────────────────────────────────────────
+function dayKey(ts){ const d=new Date(ts); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+
+function getReviewDaysSet(){
+  return new Set(savedReviews.map(r=>dayKey(r.ts)));
+}
+
+function getCurrentStreak(){
+  const days=getReviewDaysSet();
+  let streak=0;
+  let cursor=new Date();
+  while(days.has(dayKey(cursor.toISOString()))){
+    streak++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return streak;
+}
+
+function daysInCurrentMonth(){
+  const now=new Date();
+  return new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+}
+
+let fullMonthStreakShownFor=localStorage.getItem('rr_streak_celebrated')||'';
+function checkFullMonthStreak(){
+  const streak=getCurrentStreak();
+  const need=daysInCurrentMonth();
+  const monthKey=`${new Date().getFullYear()}-${new Date().getMonth()}`;
+  if(streak>=need && fullMonthStreakShownFor!==monthKey){
+    fullMonthStreakShownFor=monthKey;
+    localStorage.setItem('rr_streak_celebrated',monthKey);
+    showMonthStreakCelebration(need);
+  }
+}
+
+// ── MONTH STREAK CELEBRATION SCREEN ─────────────────────────────────────
+function showMonthStreakCelebration(monthLength){
+  const scUprightPts=[[50,3.75],[91.4,32.65],[74.9,84.35],[25.1,84.35],[8.6,32.65]];
+  const scMidY=(3.75+84.35)/2;
+  const scOuterPts=scUprightPts.map(p=>[p[0], 2*scMidY-p[1]]);
+  const scCx=scOuterPts.reduce((s,p)=>s+p[0],0)/5;
+  const scCy=scOuterPts.reduce((s,p)=>s+p[1],0)/5;
+  const scPentPointsStr=scOuterPts.map(p=>p.join(',')).join(' ');
+  const scR=65;
+  const scViewBox=`${(scCx-scR).toFixed(2)} ${(scCy-scR).toFixed(2)} ${scR*2} ${scR*2}`;
+  function scScalePts(pts,scale){ return pts.map(p=>[scCx+(p[0]-scCx)*scale, scCy+(p[1]-scCy)*scale]); }
+  const scRingPts=scScalePts(scOuterPts,1.4);
+  const scRingPtsStr=scRingPts.map(p=>p.join(',')).join(' ');
+  const scRingMarkup=`<polygon points="${scRingPtsStr}" fill="none" stroke="#F2A623" stroke-width="1.2" stroke-dasharray="1.5,3.2" stroke-linecap="round"/>
+    <polygon points="${scRingPtsStr}" fill="none" stroke="#c58a1e" stroke-width="0.6"/>
+    ${scRingPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.2" fill="#FFE8B0"/>`).join('')}`;
+
+  function scPineFlourish(px,py,angleDeg){
+    return `<g transform="translate(${px.toFixed(2)},${py.toFixed(2)}) rotate(${(angleDeg+90).toFixed(1)})" stroke="#FFFFFF" fill="none" opacity="0.92">
+        <ellipse cx="0" cy="-4.2" rx="1.3" ry="1.9" fill="#FFFFFF" stroke="none" opacity="0.9"/>
+        <line x1="0" y1="-3.9" x2="0" y2="4.6" stroke-width="0.4"/>
+        <line x1="0" y1="-1.4" x2="-2.6" y2="-2.6" stroke-width="0.35"/>
+        <line x1="0" y1="-1.4" x2="2.6" y2="-2.6" stroke-width="0.35"/>
+        <line x1="0" y1="0.3" x2="-2.2" y2="-0.7" stroke-width="0.32"/>
+        <line x1="0" y1="0.3" x2="2.2" y2="-0.7" stroke-width="0.32"/>
+        <line x1="0" y1="1.9" x2="-1.7" y2="1.1" stroke-width="0.3"/>
+        <line x1="0" y1="1.9" x2="1.7" y2="1.1" stroke-width="0.3"/>
+        <line x1="0" y1="3.3" x2="-1.1" y2="2.7" stroke-width="0.26"/>
+        <line x1="0" y1="3.3" x2="1.1" y2="2.7" stroke-width="0.26"/>
+      </g>`;
+  }
+  let scFlourishes='';
+  scOuterPts.forEach(p=>{
+    const dx=p[0]-scCx, dy=p[1]-scCy;
+    const dist=Math.sqrt(dx*dx+dy*dy)*0.55;
+    const angle=Math.atan2(dy,dx)*180/Math.PI;
+    const fx=scCx+Math.cos(angle*Math.PI/180)*dist;
+    const fy=scCy+Math.sin(angle*Math.PI/180)*dist;
+    scFlourishes+=scPineFlourish(fx,fy,angle);
+  });
+
+  const scRand=(min,max)=>min+Math.random()*(max-min);
+  const scOverlay=document.getElementById('streak-celebration');
+  const scStage=document.getElementById('sc-stage');
+  const scHolder=document.getElementById('sc-pentagon-holder');
+  const scCaption=document.getElementById('sc-caption');
+  const scTitleArea=document.getElementById('sc-title-area');
+  let scDismissed=false, scBubbleTimer=null, scRafId=null, scAllRevealed=false;
+
+  scOverlay.style.display='flex';
+  scStage.classList.remove('sc-dismissed');
+
+  const boxSize=190*1.6;
+  scHolder.innerHTML=`
+    <div id="sc-outer-ring" style="position:absolute;top:50%;left:50%;width:${boxSize}px;height:${boxSize}px;transform:translate(-50%,-50%)">
+      <svg viewBox="${scViewBox}" width="${boxSize}" height="${boxSize}" style="filter:drop-shadow(0 0 10px rgba(242,166,35,0.5))">${scRingMarkup}</svg>
+    </div>
+    <div id="sc-middle-ring" style="position:absolute;top:50%;left:50%;width:${boxSize}px;height:${boxSize}px;transform:translate(-50%,-50%)">
+      <svg viewBox="${scViewBox}" width="${boxSize}" height="${boxSize}" style="filter:drop-shadow(0 0 10px rgba(242,166,35,0.5))">${scRingMarkup}</svg>
+    </div>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${boxSize}px;height:${boxSize}px">
+      <svg viewBox="${scViewBox}" width="${boxSize}" height="${boxSize}" style="filter:drop-shadow(0 0 14px rgba(242,166,35,0.55))">
+        <polygon points="${scPentPointsStr}" fill="#F2A623"/>
+        <polygon points="${scPentPointsStr}" fill="none" stroke="#c58a1e" stroke-width="0.9"/>
+        ${scFlourishes}
+      </svg>
+    </div>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;background:#141412;border:2px solid #F2A623;display:flex;align-items:center;justify-content:center;animation:sc-pentagon-pulse 1.8s ease-in-out infinite">
+      <div style="position:absolute;inset:5px;border-radius:50%;border:1.3px dashed #FFE8B0;opacity:0.8"></div>
+      <div id="sc-day-number" style="position:relative;color:#FFE8B0;font-size:28px;font-weight:bold;animation:sc-count-in 0.5s cubic-bezier(.2,1.4,.4,1)">${String(monthLength).padStart(2,'0')}</div>
+    </div>
+    <div class="sc-radiate" style="width:95px;height:95px;animation-duration:2.2s"></div>
+    <div class="sc-radiate" style="width:95px;height:95px;animation-duration:2.2s;animation-delay:0.7s"></div>
+    <div class="sc-radiate" style="width:95px;height:95px;animation-duration:2.2s;animation-delay:1.4s"></div>`;
+
+  const outerRingEl=document.getElementById('sc-outer-ring');
+  const middleRingEl=document.getElementById('sc-middle-ring');
+  let outerAngle=0, middleAngle=0, outerDir=1, middleDir=-1;
+  const outerSpeed=8, middleSpeed=11.25;
+  let lastTs=null, wasClose=false;
+
+  function ringLoop(ts){
+    if(scDismissed){ scRafId=null; return; }
+    if(lastTs===null) lastTs=ts;
+    const dt=(ts-lastTs)/1000;
+    lastTs=ts;
+    outerAngle+=outerDir*outerSpeed*dt;
+    middleAngle+=middleDir*middleSpeed*dt;
+    outerRingEl.style.transform=`translate(-50%,-50%) rotate(${outerAngle}deg)`;
+    middleRingEl.style.transform=`translate(-50%,-50%) rotate(${middleAngle}deg)`;
+    const diff=((outerAngle-middleAngle)%72+72)%72;
+    const closeness=Math.min(diff,72-diff);
+    if(closeness<2.5){
+      if(!wasClose){
+        wasClose=true;
+        if(Math.random()<0.10){ outerDir*=-1; middleDir*=-1; }
+      }
+    } else { wasClose=false; }
+    scRafId=requestAnimationFrame(ringLoop);
+  }
+  lastTs=null;
+  scRafId=requestAnimationFrame(ringLoop);
+
+  for(let s=0;s<26;s++){
+    const sp=document.createElement('div');
+    sp.className='sc-sparkle';
+    const sz=scRand(5,12);
+    sp.style.cssText=`width:${sz}px;height:${sz}px;top:${scRand(2,96)}%;left:${scRand(2,96)}%;animation-duration:${scRand(1.0,2.6)}s;animation-delay:${(-scRand(0,2.5)).toFixed(2)}s`;
+    scStage.appendChild(sp);
+  }
+
+  const confettiColors=['#F2A623','#FFE8B0','#c58a1e','#8a6018','#e0b03a'];
+  for(let c=0;c<32;c++){
+    const angle=scRand(0,360)*Math.PI/180;
+    const dist=scRand(90,170);
+    const dx=(Math.cos(angle)*dist).toFixed(1);
+    const dy=(Math.sin(angle)*dist).toFixed(1);
+    const dur=scRand(1.3,2.0);
+    const rot=scRand(180,540)*(Math.random()>0.5?1:-1);
+    const w=scRand(4,7), h=scRand(6,10);
+    const isCircle=Math.random()>0.6;
+    const sq=document.createElement('div');
+    sq.style.cssText=`position:absolute;top:50%;left:50%;width:${w}px;height:${h}px;background:${confettiColors[c%5]};border-radius:${isCircle?'50%':'1px'};animation-name:sc-confetti-move-${c};animation-duration:${dur}s;animation-delay:${scRand(0,0.15)}s;animation-timing-function:cubic-bezier(.3,.6,.3,1);animation-fill-mode:forwards;z-index:1`;
+    const styleTag=document.createElement('style');
+    styleTag.textContent=`@keyframes sc-confetti-move-${c}{0%{transform:translate(-50%,-50%) rotate(0deg) scale(1);opacity:1}45%{transform:translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot*0.5}deg) scale(1);opacity:1}100%{transform:translate(-50%,-50%) rotate(${rot}deg) scale(0.3);opacity:0}}`;
+    document.head.appendChild(styleTag);
+    scStage.appendChild(sq);
+    setTimeout(()=>{ sq.remove(); styleTag.remove(); },dur*1000+300);
+  }
+
+  const targetWord='MEGA-MONTHLY-STREAK';
+  const targetChars=targetWord.split('');
+  const revealedArr=targetChars.map(c=>c==='-');
+  const letterSpans=[];
+  scTitleArea.innerHTML='';
+  targetChars.forEach((ch)=>{
+    const span=document.createElement('span');
+    span.style.cssText=`color:${ch==='-'?'#5f4419':'#FFE8B0'};font-size:14px;font-weight:bold;min-width:${ch==='-'?'6px':'10px'};text-align:center;opacity:${ch==='-'?'1':'0'}`;
+    span.textContent=ch;
+    scTitleArea.appendChild(span);
+    letterSpans.push(span);
+  });
+  const needPool=[...new Set(targetChars.filter(c=>c!=='-'))];
+
+  function checkAllRevealed(){
+    if(scAllRevealed) return;
+    if(revealedArr.every(v=>v)){
+      scAllRevealed=true;
+      clearInterval(scBubbleTimer);
+      scTitleArea.style.animation='sc-title-breathe 3.6s ease-in-out infinite';
+      const numEl=document.getElementById('sc-day-number');
+      if(numEl) numEl.style.animation='sc-number-breathe 3.6s ease-in-out infinite';
+    }
+  }
+  function revealLetter(ch){
+    for(let idx=0;idx<targetChars.length;idx++){
+      if(targetChars[idx]===ch && !revealedArr[idx]){
+        revealedArr[idx]=true;
+        letterSpans[idx].style.animation='sc-letter-reveal 0.3s ease-out';
+        letterSpans[idx].style.opacity='1';
+        checkAllRevealed();
+        return;
+      }
+    }
+  }
+  function spawnLetterBubble(){
+    if(scDismissed||scAllRevealed) return;
+    const ch=needPool[Math.floor(Math.random()*needPool.length)];
+    const size=scRand(18,26);
+    const b=document.createElement('div');
+    b.className='sc-letter-bubble';
+    b.textContent=ch;
+    const bx=scRand(4,94), by=scRand(4,94);
+    const life=scRand(2.4,3.45);
+    b.style.cssText+=`width:${size}px;height:${size}px;font-size:${size*0.48}px;top:${by}%;left:${bx}%;animation-duration:${life}s`;
+    scStage.appendChild(b);
+    setTimeout(()=>{
+      revealLetter(ch);
+      for(let sIdx=0;sIdx<5;sIdx++){
+        const shard=document.createElement('div');
+        const sAngle=scRand(0,360)*Math.PI/180, sDist=scRand(14,30);
+        shard.style.cssText=`position:absolute;top:${by}%;left:${bx}%;width:3px;height:3px;background:#FFE8B0;border-radius:1px;z-index:1;--sx:${(Math.cos(sAngle)*sDist).toFixed(1)}px;--sy:${(Math.sin(sAngle)*sDist).toFixed(1)}px;animation:sc-shard-fly 0.5s ease-out forwards`;
+        scStage.appendChild(shard);
+        setTimeout(()=>shard.remove(),520);
+      }
+    },life*1000*0.8);
+    setTimeout(()=>b.remove(),life*1000+400);
+  }
+  scBubbleTimer=setInterval(spawnLetterBubble,525);
+
+  scCaption.innerHTML=`<div class="sc-text-backdrop" style="color:#FFE8B0;font-size:14px;font-weight:bold;margin-bottom:4px">you did it!</div><br><span class="sc-text-backdrop" style="color:#E8E6DE;font-size:10px">a full month, every single day. can you keep it going?</span><br><span class="sc-text-backdrop" style="color:#c58a1e;font-size:9px;margin-top:6px;display:inline-block">tap the pentagon to continue</span>`;
+
+  scHolder.onclick=()=>{
+    if(scDismissed) return;
+    scDismissed=true;
+    clearInterval(scBubbleTimer);
+    if(scRafId) cancelAnimationFrame(scRafId);
+    scStage.classList.add('sc-dismissed');
+    scCaption.innerHTML='<span class="sc-text-backdrop" style="color:#A8A49E;font-size:11px">back to your reviews...</span>';
+    setTimeout(()=>{ scOverlay.style.display='none'; },900);
+  };
 }
 
 function renderSavedReviewsList(){
