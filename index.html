@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.30</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.31</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -345,43 +345,48 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- SECRET STREAK CALENDAR PAGE -->
-<div id="streak-calendar-page" style="display:none;position:fixed;inset:0;background:#0a0a09;z-index:180;flex-direction:column;padding:20px;box-sizing:border-box;overflow-y:auto;font-family:'Special Elite',monospace">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-    <div tabindex="0" style="cursor:pointer;color:#A8A49E;font-size:14px" onclick="closeAchievementsPage()">← back</div>
+<div id="streak-calendar-page" style="display:none;position:fixed;inset:0;background:#141412;z-index:180;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Special Elite',monospace">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0">
     <div id="sc-cal-month-label" style="color:#FFE8B0;font-size:0.95em;font-weight:bold;letter-spacing:1px"></div>
-    <div style="width:40px"></div>
+    <div style="width:1px"></div>
   </div>
 
-  <div id="sc-cal-streak-badge" style="text-align:center;margin-bottom:16px"></div>
+  <div style="flex:1;overflow-y:auto">
+    <div id="sc-cal-streak-badge" style="text-align:center;margin-bottom:16px"></div>
 
-  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px 1px;margin-bottom:10px" id="sc-cal-grid">
-    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">S</div>
-    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">M</div>
-    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">T</div>
-    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">W</div>
-    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">R</div>
-    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">F</div>
-    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">S</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px 1px;margin-bottom:10px" id="sc-cal-grid">
+      <div style="text-align:center;color:#A8A49E;font-size:9px;padding-bottom:2px">S</div>
+      <div style="text-align:center;color:#A8A49E;font-size:9px;padding-bottom:2px">M</div>
+      <div style="text-align:center;color:#A8A49E;font-size:9px;padding-bottom:2px">T</div>
+      <div style="text-align:center;color:#A8A49E;font-size:9px;padding-bottom:2px">W</div>
+      <div style="text-align:center;color:#A8A49E;font-size:9px;padding-bottom:2px">R</div>
+      <div style="text-align:center;color:#A8A49E;font-size:9px;padding-bottom:2px">F</div>
+      <div style="text-align:center;color:#A8A49E;font-size:9px;padding-bottom:2px">S</div>
+    </div>
+
+    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:10px;text-align:center;margin-bottom:14px" id="sc-cal-detail">
+      <span style="color:#A8A49E;font-size:11px">tap a day to see details</span>
+    </div>
+
+    <div style="color:#A8A49E;font-size:9px;text-align:center;margin-bottom:10px">reviews that day</div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:4px;max-width:260px;margin:0 auto 10px" id="sc-cal-key"></div>
   </div>
 
-  <div style="background:#1A1814;border-radius:6px;padding:10px;text-align:center;margin-bottom:14px" id="sc-cal-detail">
-    <span style="color:#A8A49E;font-size:11px">tap a day to see details</span>
+  <div class="btn-row" style="flex-shrink:0;padding-top:10px">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeAchievementsPage()">back</div>
+    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="openAchievementsPage()">achievements →</div>
   </div>
-
-  <div style="color:#7A7670;font-size:9px;text-align:center;margin-bottom:10px">reviews that day</div>
-  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:4px;max-width:260px;margin:0 auto 20px" id="sc-cal-key"></div>
-
-  <div tabindex="0" style="text-align:center;color:#5f4419;font-size:0.8em;cursor:pointer;padding-top:10px;border-top:0.5px solid #26241F" onclick="openAchievementsPage()">view achievements →</div>
 </div>
 
 <!-- SECRET ACHIEVEMENTS PAGE (opened from calendar link) -->
-<div id="achievements-list-page" style="display:none;position:fixed;inset:0;background:#0a0a09;z-index:190;flex-direction:column;padding:20px;box-sizing:border-box;overflow-y:auto">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-    <div tabindex="0" style="cursor:pointer;color:#A8A49E;font-size:14px" onclick="closeAchievementsListPage()">← back</div>
+<div id="achievements-list-page" style="display:none;position:fixed;inset:0;background:#141412;z-index:190;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Special Elite',monospace">
+  <div style="display:flex;align-items:center;justify-content:center;margin-bottom:18px;flex-shrink:0">
     <div style="color:#FFE8B0;font-size:0.95em;font-weight:bold;letter-spacing:1px">achievements</div>
-    <div style="width:40px"></div>
   </div>
-  <div id="achievements-list" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div id="achievements-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
+  <div class="btn-row" style="flex-shrink:0;padding-top:10px">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeAchievementsListPage()">back</div>
+  </div>
 </div>
 
 <!-- BACKUP / RESTORE MODAL -->
@@ -1308,7 +1313,7 @@ function renderAchievementsList(){
 }
 
 const CAL_PENT='polygon(50% 87.5%,85.4% 61.25%,72% 19.6%,27.9% 19.6%,14.6% 61.25%)';
-function calScaleFor(n){ return [0.32,0.5,0.62,0.74,0.88,1.0][Math.min(n,5)]; }
+function calScaleFor(n){ return [0.40,0.625,0.775,0.925,1.10,1.25][Math.min(n,5)]; }
 function calColorFor(n){ return ['#1A1814','#3d2e14','#5f4419','#8a6018','#c58a1e','#F2A623'][Math.min(n,5)]; }
 function calTextFor(n){ return n<=2?'#A8A49E':n<=3?'#5f4419':'#412402'; }
 function calPad(n){ return String(n).padStart(2,'0'); }
@@ -1373,8 +1378,9 @@ function renderStreakCalendar(){
     } else {
       shapeLayer=`<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${scale*100}%;height:${scale*100}%;background:${fill};clip-path:${CAL_PENT}"></div>`;
     }
-    const numberColor=isToday?'#F2A623':(isFuture?'#26241F':textColor);
-    const numberLayer=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${numberColor};font-size:9px;font-weight:${rev>0||isToday?'bold':'normal'};line-height:1;padding-top:1px">${calPad(d)}</div>`;
+    const numberColor=isFuture?'#26241F':'#FFE8B0';
+    const outlineStyle=isFuture?'':';text-shadow:0 0 2px #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000';
+    const numberLayer=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${numberColor};font-size:9px;font-weight:${rev>0||isToday?'bold':'normal'};line-height:1;padding-top:1px${outlineStyle}">${calPad(d)}</div>`;
     cell.innerHTML=shapeLayer+numberLayer;
     cell.onclick=()=>{
       const detail=document.getElementById('sc-cal-detail');
@@ -1391,7 +1397,7 @@ function renderStreakCalendar(){
 
   const keyRow=document.getElementById('sc-cal-key');
   keyRow.innerHTML='';
-  const keySizes=[8,12,16,20,24,28];
+  const keySizes=[10,15,20,25,30,35];
   for(let n=0;n<=5;n++){
     const size=keySizes[n];
     const fill=calColorFor(n);
