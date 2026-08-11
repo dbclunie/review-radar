@@ -153,17 +153,14 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 <div id="app">
 
 <div style="background:#26301C;margin:calc(-1*clamp(12px,3vmin,22px)) calc(-1*clamp(12px,3vmin,22px)) 10px;padding:10px clamp(12px,3vmin,22px);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;flex-shrink:0">
-  <div tabindex="0" style="cursor:pointer" onclick="if(!headerIconLongPressed)openBackupModal()"
-    onmousedown="startHeaderIconPress()" ontouchstart="startHeaderIconPress()"
-    onmouseup="cancelHeaderIconPress()" onmouseleave="cancelHeaderIconPress()"
-    ontouchend="cancelHeaderIconPress()" ontouchmove="cancelHeaderIconPress()">
+  <div tabindex="0" style="cursor:pointer" onclick="openBackupModal()">
     <svg width="18" height="18" viewBox="0 0 24 24">
       <polygon points="12,21 20.5,14.7 17.3,4.7 6.7,4.7 3.5,14.7" fill="none" stroke="#9AAE7E" stroke-width="0.9" opacity="0.5"/>
       <polygon points="12,17.5 17.2,13.5 15.7,6.7 9,8.4 6.2,13.2" fill="#F2A623" opacity="0.35" stroke="#F2A623" stroke-width="1"/>
     </svg>
   </div>
-  <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.28</span>
+  <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.29</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -347,10 +344,40 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   </div>
 </div>
 
-<!-- SECRET ACHIEVEMENTS PAGE -->
-<div id="achievements-page" style="display:none;position:fixed;inset:0;background:#0a0a09;z-index:180;flex-direction:column;padding:20px;box-sizing:border-box;overflow-y:auto">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+<!-- SECRET STREAK CALENDAR PAGE -->
+<div id="achievements-page" style="display:none;position:fixed;inset:0;background:#0a0a09;z-index:180;flex-direction:column;padding:20px;box-sizing:border-box;overflow-y:auto;font-family:'Special Elite',monospace">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
     <div tabindex="0" style="cursor:pointer;color:#A8A49E;font-size:14px" onclick="closeAchievementsPage()">← back</div>
+    <div id="sc-cal-month-label" style="color:#FFE8B0;font-size:0.95em;font-weight:bold;letter-spacing:1px"></div>
+    <div style="width:40px"></div>
+  </div>
+
+  <div id="sc-cal-streak-badge" style="text-align:center;margin-bottom:16px"></div>
+
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px 1px;margin-bottom:10px" id="sc-cal-grid">
+    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">S</div>
+    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">M</div>
+    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">T</div>
+    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">W</div>
+    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">R</div>
+    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">F</div>
+    <div style="text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px">S</div>
+  </div>
+
+  <div style="background:#1A1814;border-radius:6px;padding:10px;text-align:center;margin-bottom:14px" id="sc-cal-detail">
+    <span style="color:#A8A49E;font-size:11px">tap a day to see details</span>
+  </div>
+
+  <div style="color:#7A7670;font-size:9px;text-align:center;margin-bottom:10px">reviews that day</div>
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:4px;max-width:260px;margin:0 auto 20px" id="sc-cal-key"></div>
+
+  <div tabindex="0" style="text-align:center;color:#5f4419;font-size:0.8em;cursor:pointer;padding-top:10px;border-top:0.5px solid #26241F" onclick="openAchievementsPage()">view achievements →</div>
+</div>
+
+<!-- SECRET ACHIEVEMENTS PAGE (opened from calendar link) -->
+<div id="achievements-list-page" style="display:none;position:fixed;inset:0;background:#0a0a09;z-index:190;flex-direction:column;padding:20px;box-sizing:border-box;overflow-y:auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div tabindex="0" style="cursor:pointer;color:#A8A49E;font-size:14px" onclick="closeAchievementsListPage()">← back</div>
     <div style="color:#FFE8B0;font-size:0.95em;font-weight:bold;letter-spacing:1px">achievements</div>
     <div style="width:40px"></div>
   </div>
@@ -1242,23 +1269,19 @@ function unlockAchievement(id,title,description){
   saveAchievements(achievements);
 }
 
-let headerIconPressTimer=null;
-let headerIconLongPressed=false;
-function startHeaderIconPress(){
-  headerIconLongPressed=false;
-  headerIconPressTimer=setTimeout(()=>{
-    headerIconLongPressed=true;
-    openAchievementsPage();
-  },700);
-}
-function cancelHeaderIconPress(){ clearTimeout(headerIconPressTimer); }
-
-function openAchievementsPage(){
-  renderAchievementsList();
+function openStreakCalendar(){
+  renderStreakCalendar();
   document.getElementById('achievements-page').style.display='flex';
 }
 function closeAchievementsPage(){
   document.getElementById('achievements-page').style.display='none';
+}
+function openAchievementsPage(){
+  renderAchievementsList();
+  document.getElementById('achievements-list-page').style.display='flex';
+}
+function closeAchievementsListPage(){
+  document.getElementById('achievements-list-page').style.display='none';
 }
 
 function renderAchievementsList(){
@@ -1282,6 +1305,104 @@ function renderAchievementsList(){
       </div>
     </div>`;
   }).join('');
+}
+
+const CAL_PENT='polygon(50% 87.5%,85.4% 61.25%,72% 19.6%,27.9% 19.6%,14.6% 61.25%)';
+function calScaleFor(n){ return [0.32,0.5,0.62,0.74,0.88,1.0][Math.min(n,5)]; }
+function calColorFor(n){ return ['#1A1814','#3d2e14','#5f4419','#8a6018','#c58a1e','#F2A623'][Math.min(n,5)]; }
+function calTextFor(n){ return n<=2?'#A8A49E':n<=3?'#5f4419':'#412402'; }
+function calPad(n){ return String(n).padStart(2,'0'); }
+
+function renderStreakCalendar(){
+  const now=new Date();
+  const year=now.getFullYear(), month=now.getMonth();
+  const today=now.getDate();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const firstWeekday=new Date(year,month,1).getDay();
+
+  document.getElementById('sc-cal-month-label').textContent=now.toLocaleDateString(undefined,{month:'long'}).toLowerCase();
+
+  const streak=getCurrentStreak();
+  const badgeEl=document.getElementById('sc-cal-streak-badge');
+  if(streak>0){
+    badgeEl.innerHTML=`<div style="display:inline-flex;align-items:center;gap:6px;background:#26301C;border:0.5px solid #F2A623;border-radius:14px;padding:5px 14px">
+      <span style="color:#F2A623;font-size:12px;font-weight:bold">${streak} day streak</span>
+    </div>`;
+  } else {
+    badgeEl.innerHTML=`<span style="color:#5f4419;font-size:11px">no active streak — review something today</span>`;
+  }
+
+  // count reviews per day this month from real saved data
+  const revByDay={};
+  const catsByDay={};
+  savedReviews.forEach(r=>{
+    const d=new Date(r.ts);
+    if(d.getFullYear()===year && d.getMonth()===month){
+      const day=d.getDate();
+      revByDay[day]=(revByDay[day]||0)+1;
+      if(!catsByDay[day]) catsByDay[day]=[];
+      catsByDay[day].push(r.catLabel);
+    }
+  });
+
+  const grid=document.getElementById('sc-cal-grid');
+  grid.innerHTML='';
+  const headerLabels=['S','M','T','W','R','F','S'];
+  headerLabels.forEach(l=>{
+    const h=document.createElement('div');
+    h.style.cssText='text-align:center;color:#7A7670;font-size:9px;padding-bottom:2px';
+    h.textContent=l;
+    grid.appendChild(h);
+  });
+  for(let i=0;i<firstWeekday;i++){ grid.appendChild(document.createElement('div')); }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const isFuture=d>today;
+    const isToday=d===today;
+    const rev=isFuture?0:(revByDay[d]||0);
+    const cats=catsByDay[d]||[];
+    const cell=document.createElement('div');
+    cell.style.cssText='aspect-ratio:1;position:relative;cursor:pointer';
+    const scale=calScaleFor(rev);
+    const fill=isToday?'#F2A623':calColorFor(rev);
+    const textColor=isToday?'#412402':calTextFor(rev);
+    let shapeLayer='';
+    if(isToday){
+      shapeLayer=`<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${scale*100}%;height:${scale*100}%;background:#F2A623;clip-path:${CAL_PENT}"></div>
+                  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${scale*82}%;height:${scale*82}%;background:#26301C;clip-path:${CAL_PENT}"></div>`;
+    } else {
+      shapeLayer=`<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${scale*100}%;height:${scale*100}%;background:${fill};clip-path:${CAL_PENT}"></div>`;
+    }
+    const numberColor=isToday?'#F2A623':(isFuture?'#26241F':textColor);
+    const numberLayer=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${numberColor};font-size:9px;font-weight:${rev>0||isToday?'bold':'normal'};line-height:1;padding-top:1px">${calPad(d)}</div>`;
+    cell.innerHTML=shapeLayer+numberLayer;
+    cell.onclick=()=>{
+      const detail=document.getElementById('sc-cal-detail');
+      if(isFuture){
+        detail.innerHTML=`<span style="color:#7A7670;font-size:11px">${now.toLocaleDateString(undefined,{month:'short'})} ${calPad(d)} hasn't happened yet</span>`;
+      } else if(rev===0){
+        detail.innerHTML=`<span style="color:#7A7670;font-size:11px">${now.toLocaleDateString(undefined,{month:'short'})} ${calPad(d)} — no reviews</span>`;
+      } else {
+        detail.innerHTML=`<span style="color:#A8A49E;font-size:11px">${now.toLocaleDateString(undefined,{month:'short'})} ${calPad(d)} — <span style="color:#E8E6DE">${rev} review${rev>1?'s':''}</span> · ${cats.join(', ')}</span>`;
+      }
+    };
+    grid.appendChild(cell);
+  }
+
+  const keyRow=document.getElementById('sc-cal-key');
+  keyRow.innerHTML='';
+  const keySizes=[8,12,16,20,24,28];
+  for(let n=0;n<=5;n++){
+    const size=keySizes[n];
+    const fill=calColorFor(n);
+    const item=document.createElement('div');
+    item.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;flex:1';
+    item.innerHTML=`<div style="height:30px;display:flex;align-items:flex-end;justify-content:center">
+        <div style="width:${size}px;height:${size}px;background:${fill};clip-path:${CAL_PENT};border:${n===0?'0.5px solid #3A3833':'none'}"></div>
+      </div>
+      <span style="color:#A8A49E;font-size:10px;font-weight:bold">${n}</span>`;
+    keyRow.appendChild(item);
+  }
 }
 
 function checkFullMonthStreak(){
