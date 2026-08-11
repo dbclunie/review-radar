@@ -133,14 +133,14 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 <div id="app">
 
 <div style="background:#26301C;margin:calc(-1*clamp(12px,3vmin,22px)) calc(-1*clamp(12px,3vmin,22px)) 10px;padding:10px clamp(12px,3vmin,22px);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;flex-shrink:0">
-  <div>
+  <div tabindex="0" style="cursor:pointer" onclick="openBackupModal()">
     <svg width="18" height="18" viewBox="0 0 24 24">
       <polygon points="12,21 20.5,14.7 17.3,4.7 6.7,4.7 3.5,14.7" fill="none" stroke="#9AAE7E" stroke-width="0.9" opacity="0.5"/>
       <polygon points="12,17.5 17.2,13.5 15.7,6.7 9,8.4 6.2,13.2" fill="#F2A623" opacity="0.35" stroke="#F2A623" stroke-width="1"/>
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.24</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.25</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -324,6 +324,35 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   </div>
 </div>
 
+<!-- BACKUP / RESTORE MODAL -->
+<div id="backup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#1E1C18;border:0.5px solid #3A3833;border-radius:10px;padding:20px;max-width:320px;width:100%">
+    <div style="color:#E8E6DE;font-size:1.05em;font-weight:bold;text-align:center;margin-bottom:4px">back up your reviews</div>
+    <div style="color:#A8A49E;font-size:0.78em;text-align:center;margin-bottom:16px;line-height:1.5">everything lives on this device only. export a backup so you never lose it.</div>
+
+    <div tabindex="0" id="backup-export-btn" style="display:flex;align-items:center;gap:10px;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:10px;margin-bottom:10px;cursor:pointer" onclick="exportBackup()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <div>
+        <div style="color:#E8E6DE;font-size:0.85em">export backup</div>
+        <div style="color:#7A7670;font-size:0.68em">downloads a .json file</div>
+      </div>
+    </div>
+
+    <div tabindex="0" style="display:flex;align-items:center;gap:10px;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:10px;cursor:pointer" onclick="triggerRestorePick()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A8A49E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div>
+        <div style="color:#E8E6DE;font-size:0.85em">restore from backup</div>
+        <div style="color:#7A7670;font-size:0.68em">select a .json backup file</div>
+      </div>
+    </div>
+    <input type="file" id="restore-file-input" accept="application/json,.json" style="display:none" onchange="handleRestoreFile(event)">
+    <div id="restore-status" style="font-size:0.72em;margin-top:8px;min-height:1.2em;text-align:center"></div>
+    <div tabindex="0" id="restore-confirm-btn" style="display:none;background:#E24B4A;border-radius:6px;text-align:center;padding:10px;color:#fff;font-size:0.85em;font-weight:bold;margin-top:8px;cursor:pointer" onclick="confirmRestore()">restore this backup</div>
+
+    <div tabindex="0" style="text-align:center;padding:10px;color:#7A7670;font-size:0.8em;margin-top:14px;cursor:pointer" onclick="closeBackupModal()">close</div>
+  </div>
+</div>
+
 <!-- CONFIRM DELETE MODAL -->
 <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:20px">
   <div style="background:#1E1C18;border:0.5px solid #3A3833;border-radius:10px;padding:20px;max-width:340px;width:100%">
@@ -370,6 +399,81 @@ function loadSavedReviews(){
 }
 function saveSavedReviews(list){
   try{ localStorage.setItem('rr_saved',JSON.stringify(list)); }catch(e){}
+}
+
+// ── BACKUP / RESTORE ─────────────────────────────────────────────────────
+function exportBackup(){
+  const backup={
+    app:'review-radar',
+    version:1,
+    exportedAt:new Date().toISOString(),
+    registry,
+    savedReviews
+  };
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
+  downloadBlob(blob,`review_radar_backup_${stamp}.json`);
+  btnFeedback(document.getElementById('backup-export-btn'),'\u2713 downloaded','#97C459','#1a2e0a',2000);
+}
+
+let pendingRestoreData=null;
+function triggerRestorePick(){ document.getElementById('restore-file-input').click(); }
+function handleRestoreFile(e){
+  const f=e.target.files[0];
+  if(!f) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let data;
+    try{ data=JSON.parse(reader.result); }
+    catch(err){
+      document.getElementById('restore-status').textContent='\u26a0 not a valid backup file';
+      document.getElementById('restore-status').style.color='#E24B4A';
+      return;
+    }
+    if(data.app!=='review-radar' || !Array.isArray(data.registry) || !Array.isArray(data.savedReviews)){
+      document.getElementById('restore-status').textContent='\u26a0 not a valid Review Radar backup';
+      document.getElementById('restore-status').style.color='#E24B4A';
+      return;
+    }
+    pendingRestoreData=data;
+    const catCount=data.registry.length;
+    const revCount=data.savedReviews.length;
+    const exportDate=data.exportedAt?new Date(data.exportedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'unknown date';
+    document.getElementById('restore-status').style.color='#A8A49E';
+    document.getElementById('restore-status').textContent=`found ${catCount} categor${catCount===1?'y':'ies'}, ${revCount} review${revCount===1?'':'s'} (backed up ${exportDate})`;
+    document.getElementById('restore-confirm-btn').style.display='block';
+  };
+  reader.readAsText(f);
+}
+function confirmRestore(){
+  if(!pendingRestoreData) return;
+  showConfirmModal(
+    'Restore will replace ALL current categories and reviews with the backup. This cannot be undone.',
+    ()=>{
+      registry=pendingRestoreData.registry;
+      savedReviews=pendingRestoreData.savedReviews;
+      saveRegistry(registry);
+      saveSavedReviews(savedReviews);
+      pendingRestoreData=null;
+      document.getElementById('restore-status').textContent='';
+      document.getElementById('restore-confirm-btn').style.display='none';
+      document.getElementById('restore-file-input').value='';
+      renderCatSelect();
+      renderSavedReviewsList();
+      closeBackupModal();
+    }
+  );
+}
+
+function openBackupModal(){
+  document.getElementById('backup-modal').style.display='flex';
+}
+function closeBackupModal(){
+  document.getElementById('backup-modal').style.display='none';
+  pendingRestoreData=null;
+  document.getElementById('restore-status').textContent='';
+  document.getElementById('restore-confirm-btn').style.display='none';
+  document.getElementById('restore-file-input').value='';
 }
 
 // ── GRADE BANDS ───────────────────────────────────────────────────────────
