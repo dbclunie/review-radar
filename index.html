@@ -140,7 +140,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.25</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.26</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -359,7 +359,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div id="confirm-modal-text" style="font-size:0.95em;color:#E8E6DE;margin-bottom:18px;text-align:center;line-height:1.5"></div>
     <div style="display:flex;gap:8px">
       <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeConfirmModal()">cancel</div>
-      <div tabindex="0" class="btn" style="flex:1;text-align:center;background:#E24B4A;color:#fff" onclick="confirmModalYes()">delete</div>
+      <div tabindex="0" class="btn" id="confirm-modal-yes" style="flex:1;text-align:center;background:#E24B4A;color:#fff" onclick="confirmModalYes()">delete</div>
     </div>
   </div>
 </div>
@@ -448,7 +448,7 @@ function handleRestoreFile(e){
 function confirmRestore(){
   if(!pendingRestoreData) return;
   showConfirmModal(
-    'Restore will replace ALL current categories and reviews with the backup. This cannot be undone.',
+    "Restoring will replace your current categories and reviews with this backup. Anything added since isn't in the backup and will be lost.",
     ()=>{
       registry=pendingRestoreData.registry;
       savedReviews=pendingRestoreData.savedReviews;
@@ -461,7 +461,8 @@ function confirmRestore(){
       renderCatSelect();
       renderSavedReviewsList();
       closeBackupModal();
-    }
+    },
+    'restore'
   );
 }
 
@@ -1713,8 +1714,13 @@ async function saveReviewImage(btn){
 }
 
 let confirmModalCallback=null;
-function showConfirmModal(text,onYes){
+function showConfirmModal(text,onYes,confirmLabel){
   document.getElementById('confirm-modal-text').textContent=text;
+  const yesBtn=document.getElementById('confirm-modal-yes');
+  yesBtn.textContent=confirmLabel||'delete';
+  const isDestructive=!confirmLabel||confirmLabel==='delete';
+  yesBtn.style.background=isDestructive?'#E24B4A':'#F2A623';
+  yesBtn.style.color=isDestructive?'#fff':'#412402';
   confirmModalCallback=onYes;
   document.getElementById('confirm-modal').style.display='flex';
 }
