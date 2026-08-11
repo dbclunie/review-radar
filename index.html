@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.32</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.33</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -422,7 +422,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div style="background:#1E1C18;border:0.5px solid #3A3833;border-radius:10px;padding:20px;max-width:340px;width:100%">
     <div id="confirm-modal-text" style="font-size:0.95em;color:#E8E6DE;margin-bottom:18px;text-align:center;line-height:1.5"></div>
     <div style="display:flex;gap:8px">
-      <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeConfirmModal()">cancel</div>
+      <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="cancelConfirmModal()">cancel</div>
       <div tabindex="0" class="btn" id="confirm-modal-yes" style="flex:1;text-align:center;background:#E24B4A;color:#fff" onclick="confirmModalYes()">delete</div>
     </div>
   </div>
@@ -488,6 +488,7 @@ function exportBackup(){
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
   downloadBlob(blob,`review_radar_backup_${stamp}.json`);
+  bumpCounter('rr_backup_count'); evaluateAchievements();
   btnFeedback(document.getElementById('backup-export-btn'),'\u2713 downloaded','#97C459','#1a2e0a',2000);
 }
 
@@ -536,6 +537,7 @@ function confirmRestore(){
       renderCatSelect();
       renderSavedReviewsList();
       closeBackupModal();
+      bumpCounter('rr_restore_count'); evaluateAchievements();
     },
     'restore'
   );
@@ -743,6 +745,7 @@ function toggleCatSelection(idx){
   renderCatSelect();
 }
 function deleteSelectedCats(){
+  setMaxCounter('rr_bulk_delete_cat_max',selectedCatIds.size);
   // Delete by index — filter keeps entries whose index is NOT selected
   registry=registry.filter((_,i)=>!selectedCatIds.has(i));
   saveRegistry(registry);
@@ -750,6 +753,7 @@ function deleteSelectedCats(){
   selectedCatIds.clear();
   closeCatDD();
   renderCatSelect();
+  evaluateAchievements();
 }
 
 function updateCatDDSelected(){
@@ -1082,6 +1086,7 @@ async function confirmMapLocation(){
   updateLocationDisplay();
   renderConfirm();
   if(curLocation){
+    bumpCounter('rr_manual_pin_count'); evaluateAchievements();
     // fetch address + map snapshot in background
     const addr=await reverseGeocode(curLocation.lat,curLocation.lng);
     if(addr && curLocation){
@@ -1222,6 +1227,7 @@ function recordCurrentReview(cat,payload,scoreText){
   saveSavedReviews(savedReviews);
   renderSavedReviewsList();
   checkFullMonthStreak();
+  evaluateAchievements();
   // Photo may already be attached if user picked it before this fired
   if(attachedPhoto){
     const reader=new FileReader();
@@ -1271,11 +1277,379 @@ function unlockAchievement(id,title,description){
   if(achievements.find(a=>a.id===id)) return; // already unlocked
   achievements.push({id,title,description,earnedAt:new Date().toISOString()});
   saveAchievements(achievements);
+  showAchievementToast(title);
+}
+
+function showAchievementToast(title){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:#1E1C18;border:1px solid #F2A623;border-radius:8px;padding:10px 16px;z-index:300;display:flex;align-items:center;gap:8px;opacity:0;transition:opacity .25s,transform .25s;font-family:\'Special Elite\',monospace';
+  t.innerHTML=`<svg width="18" height="18" viewBox="0 0 100 92"><polygon points="50,3.75 91.4,32.65 74.9,84.35 25.1,84.35 8.6,32.65" fill="#F2A623"/></svg><div><div style="color:#FFE8B0;font-size:0.75em;font-weight:bold">achievement unlocked</div><div style="color:#E8E6DE;font-size:0.7em">${title}</div></div>`;
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>{ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
+  setTimeout(()=>{
+    t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)';
+    setTimeout(()=>t.remove(),300);
+  },2600);
+}
+
+// ── ACHIEVEMENT DEFINITIONS (curated, round-number set) ──────────────────
+const ACHIEVEMENT_DEFS=[
+{"id":"vol-1","title":"First Impression","description":"Save 1 total review.","checkType":"total_review_count","threshold":1},
+{"id":"vol-5","title":"High Five","description":"Save 5 total reviews.","checkType":"total_review_count","threshold":5},
+{"id":"vol-10","title":"Ten Down","description":"Save 10 total reviews.","checkType":"total_review_count","threshold":10},
+{"id":"vol-25","title":"Quarter Century","description":"Save 25 total reviews.","checkType":"total_review_count","threshold":25},
+{"id":"vol-50","title":"Half Century","description":"Save 50 total reviews.","checkType":"total_review_count","threshold":50},
+{"id":"vol-100","title":"Centurion","description":"Save 100 total reviews.","checkType":"total_review_count","threshold":100},
+{"id":"vol-150","title":"150 Club","description":"Save 150 total reviews.","checkType":"total_review_count","threshold":150},
+{"id":"vol-200","title":"Two Hundred Club","description":"Save 200 total reviews.","checkType":"total_review_count","threshold":200},
+{"id":"vol-250","title":"Milestone 250","description":"Save 250 total reviews.","checkType":"total_review_count","threshold":250},
+{"id":"vol-300","title":"Triple Century","description":"Save 300 total reviews.","checkType":"total_review_count","threshold":300},
+{"id":"vol-400","title":"Four Hundred","description":"Save 400 total reviews.","checkType":"total_review_count","threshold":400},
+{"id":"vol-500","title":"Five Hundred Strong","description":"Save 500 total reviews.","checkType":"total_review_count","threshold":500},
+{"id":"vol-750","title":"Three Quarter K","description":"Save 750 total reviews.","checkType":"total_review_count","threshold":750},
+{"id":"vol-1000","title":"The Thousand","description":"Save 1000 total reviews.","checkType":"total_review_count","threshold":1000},
+{"id":"daily-vol-3","title":"3 in a Day","description":"Log 3 reviews in a single calendar day.","checkType":"reviews_in_one_day","threshold":3},
+{"id":"daily-vol-5","title":"5 in a Day","description":"Log 5 reviews in a single calendar day.","checkType":"reviews_in_one_day","threshold":5},
+{"id":"daily-vol-10","title":"10 in a Day","description":"Log 10 reviews in a single calendar day.","checkType":"reviews_in_one_day","threshold":10},
+{"id":"daily-vol-20","title":"20 in a Day","description":"Log 20 reviews in a single calendar day.","checkType":"reviews_in_one_day","threshold":20},
+
+{"id":"streak-2","title":"Two in a Row","description":"Reach a 2-day review streak.","checkType":"current_streak","threshold":2},
+{"id":"streak-5","title":"Getting Warmed Up","description":"Reach a 5-day review streak.","checkType":"current_streak","threshold":5},
+{"id":"streak-7","title":"Full Week","description":"Reach a 7-day review streak.","checkType":"current_streak","threshold":7},
+{"id":"streak-14","title":"Fortnight Fanatic","description":"Reach a 14-day review streak.","checkType":"current_streak","threshold":14},
+{"id":"streak-21","title":"Three Week Habit","description":"Reach a 21-day review streak.","checkType":"current_streak","threshold":21},
+{"id":"streak-30","title":"Mega Monthly Streak","description":"Reach a 30-day review streak.","checkType":"current_streak","threshold":30},
+{"id":"streak-45","title":"Forty-Five Straight","description":"Reach a 45-day review streak.","checkType":"current_streak","threshold":45},
+{"id":"streak-60","title":"Two Month Torch","description":"Reach a 60-day review streak.","checkType":"current_streak","threshold":60},
+{"id":"streak-90","title":"Quarter Streak","description":"Reach a 90-day review streak.","checkType":"current_streak","threshold":90},
+{"id":"streak-120","title":"Four Month Flame","description":"Reach a 120-day review streak.","checkType":"current_streak","threshold":120},
+{"id":"streak-150","title":"150 Day Blaze","description":"Reach a 150-day review streak.","checkType":"current_streak","threshold":150},
+{"id":"streak-180","title":"Half Year Hero","description":"Reach a 180-day review streak.","checkType":"current_streak","threshold":180},
+{"id":"streak-270","title":"Three Quarter Year","description":"Reach a 270-day review streak.","checkType":"current_streak","threshold":270},
+{"id":"streak-365","title":"The Unbroken","description":"Reach a 365-day review streak.","checkType":"current_streak","threshold":365},
+{"id":"month-streak-1","title":"First Full Month","description":"Complete 1 full-calendar-month streak.","checkType":"consecutive_month_streaks","threshold":1},
+{"id":"month-streak-2","title":"Back to Back Months","description":"Complete 2 consecutive full-calendar-month streaks.","checkType":"consecutive_month_streaks","threshold":2},
+{"id":"month-streak-3","title":"Quarter of Months","description":"Complete 3 consecutive full-calendar-month streaks.","checkType":"consecutive_month_streaks","threshold":3},
+{"id":"month-streak-6","title":"Half a Year of Months","description":"Complete 6 consecutive full-calendar-month streaks.","checkType":"consecutive_month_streaks","threshold":6},
+{"id":"month-streak-12","title":"A Full Year of Months","description":"Complete 12 consecutive full-calendar-month streaks.","checkType":"consecutive_month_streaks","threshold":12},
+
+{"id":"grade-S-1","title":"S-Tier x1","description":"Earn an S grade on 1 review.","checkType":"grade_count","threshold":1,"grade":"S"},
+{"id":"grade-S-10","title":"S-Tier x10","description":"Earn an S grade on 10 reviews.","checkType":"grade_count","threshold":10,"grade":"S"},
+{"id":"grade-S-25","title":"S-Tier x25","description":"Earn an S grade on 25 reviews.","checkType":"grade_count","threshold":25,"grade":"S"},
+{"id":"grade-S-50","title":"S-Tier x50","description":"Earn an S grade on 50 reviews.","checkType":"grade_count","threshold":50,"grade":"S"},
+{"id":"grade-S-100","title":"S-Tier x100","description":"Earn an S grade on 100 reviews.","checkType":"grade_count","threshold":100,"grade":"S"},
+{"id":"grade-A-1","title":"A-Grade x1","description":"Earn an A grade on 1 review.","checkType":"grade_count","threshold":1,"grade":"A"},
+{"id":"grade-A-10","title":"A-Grade x10","description":"Earn an A grade on 10 reviews.","checkType":"grade_count","threshold":10,"grade":"A"},
+{"id":"grade-A-25","title":"A-Grade x25","description":"Earn an A grade on 25 reviews.","checkType":"grade_count","threshold":25,"grade":"A"},
+{"id":"grade-A-50","title":"A-Grade x50","description":"Earn an A grade on 50 reviews.","checkType":"grade_count","threshold":50,"grade":"A"},
+{"id":"grade-A-100","title":"A-Grade x100","description":"Earn an A grade on 100 reviews.","checkType":"grade_count","threshold":100,"grade":"A"},
+{"id":"grade-B-1","title":"B-Grade x1","description":"Earn a B grade on 1 review.","checkType":"grade_count","threshold":1,"grade":"B"},
+{"id":"grade-B-10","title":"B-Grade x10","description":"Earn a B grade on 10 reviews.","checkType":"grade_count","threshold":10,"grade":"B"},
+{"id":"grade-B-25","title":"B-Grade x25","description":"Earn a B grade on 25 reviews.","checkType":"grade_count","threshold":25,"grade":"B"},
+{"id":"grade-B-50","title":"B-Grade x50","description":"Earn a B grade on 50 reviews.","checkType":"grade_count","threshold":50,"grade":"B"},
+{"id":"grade-B-100","title":"B-Grade x100","description":"Earn a B grade on 100 reviews.","checkType":"grade_count","threshold":100,"grade":"B"},
+{"id":"grade-C-1","title":"C-Grade x1","description":"Earn a C grade on 1 review.","checkType":"grade_count","threshold":1,"grade":"C"},
+{"id":"grade-C-10","title":"C-Grade x10","description":"Earn a C grade on 10 reviews.","checkType":"grade_count","threshold":10,"grade":"C"},
+{"id":"grade-C-25","title":"C-Grade x25","description":"Earn a C grade on 25 reviews.","checkType":"grade_count","threshold":25,"grade":"C"},
+{"id":"grade-C-50","title":"C-Grade x50","description":"Earn a C grade on 50 reviews.","checkType":"grade_count","threshold":50,"grade":"C"},
+{"id":"grade-C-100","title":"C-Grade x100","description":"Earn a C grade on 100 reviews.","checkType":"grade_count","threshold":100,"grade":"C"},
+{"id":"grade-D-1","title":"D-Grade x1","description":"Earn a D grade on 1 review.","checkType":"grade_count","threshold":1,"grade":"D"},
+{"id":"grade-D-10","title":"D-Grade x10","description":"Earn a D grade on 10 reviews.","checkType":"grade_count","threshold":10,"grade":"D"},
+{"id":"grade-D-25","title":"D-Grade x25","description":"Earn a D grade on 25 reviews.","checkType":"grade_count","threshold":25,"grade":"D"},
+{"id":"grade-D-50","title":"D-Grade x50","description":"Earn a D grade on 50 reviews.","checkType":"grade_count","threshold":50,"grade":"D"},
+{"id":"grade-D-100","title":"D-Grade x100","description":"Earn a D grade on 100 reviews.","checkType":"grade_count","threshold":100,"grade":"D"},
+{"id":"grade-F-1","title":"F-Grade x1","description":"Earn an F grade on 1 review.","checkType":"grade_count","threshold":1,"grade":"F"},
+{"id":"grade-F-10","title":"F-Grade x10","description":"Earn an F grade on 10 reviews.","checkType":"grade_count","threshold":10,"grade":"F"},
+{"id":"grade-F-25","title":"F-Grade x25","description":"Earn an F grade on 25 reviews.","checkType":"grade_count","threshold":25,"grade":"F"},
+{"id":"grade-F-50","title":"F-Grade x50","description":"Earn an F grade on 50 reviews.","checkType":"grade_count","threshold":50,"grade":"F"},
+{"id":"grade-F-100","title":"F-Grade x100","description":"Earn an F grade on 100 reviews.","checkType":"grade_count","threshold":100,"grade":"F"},
+
+{"id":"star-1-1","title":"1-Star x1","description":"Give a 1-star rating 1 time.","checkType":"star_count","threshold":1,"stars":1},
+{"id":"star-1-10","title":"1-Star x10","description":"Give a 1-star rating 10 times.","checkType":"star_count","threshold":10,"stars":1},
+{"id":"star-1-25","title":"1-Star x25","description":"Give a 1-star rating 25 times.","checkType":"star_count","threshold":25,"stars":1},
+{"id":"star-1-50","title":"1-Star x50","description":"Give a 1-star rating 50 times.","checkType":"star_count","threshold":50,"stars":1},
+{"id":"star-2-1","title":"2-Star x1","description":"Give a 2-star rating 1 time.","checkType":"star_count","threshold":1,"stars":2},
+{"id":"star-2-10","title":"2-Star x10","description":"Give a 2-star rating 10 times.","checkType":"star_count","threshold":10,"stars":2},
+{"id":"star-2-25","title":"2-Star x25","description":"Give a 2-star rating 25 times.","checkType":"star_count","threshold":25,"stars":2},
+{"id":"star-2-50","title":"2-Star x50","description":"Give a 2-star rating 50 times.","checkType":"star_count","threshold":50,"stars":2},
+{"id":"star-3-1","title":"3-Star x1","description":"Give a 3-star rating 1 time.","checkType":"star_count","threshold":1,"stars":3},
+{"id":"star-3-10","title":"3-Star x10","description":"Give a 3-star rating 10 times.","checkType":"star_count","threshold":10,"stars":3},
+{"id":"star-3-25","title":"3-Star x25","description":"Give a 3-star rating 25 times.","checkType":"star_count","threshold":25,"stars":3},
+{"id":"star-3-50","title":"3-Star x50","description":"Give a 3-star rating 50 times.","checkType":"star_count","threshold":50,"stars":3},
+{"id":"star-4-1","title":"4-Star x1","description":"Give a 4-star rating 1 time.","checkType":"star_count","threshold":1,"stars":4},
+{"id":"star-4-10","title":"4-Star x10","description":"Give a 4-star rating 10 times.","checkType":"star_count","threshold":10,"stars":4},
+{"id":"star-4-25","title":"4-Star x25","description":"Give a 4-star rating 25 times.","checkType":"star_count","threshold":25,"stars":4},
+{"id":"star-4-50","title":"4-Star x50","description":"Give a 4-star rating 50 times.","checkType":"star_count","threshold":50,"stars":4},
+{"id":"star-5-1","title":"5-Star x1","description":"Give a 5-star rating 1 time.","checkType":"star_count","threshold":1,"stars":5},
+{"id":"star-5-10","title":"5-Star x10","description":"Give a 5-star rating 10 times.","checkType":"star_count","threshold":10,"stars":5},
+{"id":"star-5-25","title":"5-Star x25","description":"Give a 5-star rating 25 times.","checkType":"star_count","threshold":25,"stars":5},
+{"id":"star-5-50","title":"5-Star x50","description":"Give a 5-star rating 50 times.","checkType":"star_count","threshold":50,"stars":5},
+
+{"id":"cat-created-1","title":"1 Category Created","description":"Create 1 category type.","checkType":"category_count","threshold":1},
+{"id":"cat-created-3","title":"3 Categories Created","description":"Create 3 category types.","checkType":"category_count","threshold":3},
+{"id":"cat-created-5","title":"5 Categories Created","description":"Create 5 category types.","checkType":"category_count","threshold":5},
+{"id":"cat-created-10","title":"10 Categories Created","description":"Create 10 category types.","checkType":"category_count","threshold":10},
+{"id":"cat-created-15","title":"15 Categories Created","description":"Create 15 category types.","checkType":"category_count","threshold":15},
+{"id":"cat-created-20","title":"20 Categories Created","description":"Create 20 category types.","checkType":"category_count","threshold":20},
+{"id":"cat-created-30","title":"30 Categories Created","description":"Create 30 category types.","checkType":"category_count","threshold":30},
+{"id":"duplicate-dodged","title":"Duplicate Dodger","description":"Trigger the duplicate-category warning at least once.","checkType":"dupe_warning_shown","threshold":1},
+{"id":"axis-rename","title":"Rename Artist","description":"Rename a category's axes after it already has reviews.","checkType":"unsupported","threshold":1},
+
+{"id":"cat-depth-10","title":"Specialist (10)","description":"Log 10 reviews within a single category.","checkType":"single_category_count","threshold":10},
+{"id":"cat-depth-25","title":"Specialist (25)","description":"Log 25 reviews within a single category.","checkType":"single_category_count","threshold":25},
+{"id":"cat-depth-50","title":"Specialist (50)","description":"Log 50 reviews within a single category.","checkType":"single_category_count","threshold":50},
+{"id":"cat-depth-100","title":"Specialist (100)","description":"Log 100 reviews within a single category.","checkType":"single_category_count","threshold":100},
+{"id":"cat-depth-200","title":"Specialist (200)","description":"Log 200 reviews within a single category.","checkType":"single_category_count","threshold":200},
+{"id":"cat-depth-500","title":"Specialist (500)","description":"Log 500 reviews within a single category.","checkType":"single_category_count","threshold":500},
+
+{"id":"breadth-3","title":"Breadth x3","description":"Have at least one review in 3 different categories.","checkType":"distinct_categories_used","threshold":3},
+{"id":"breadth-5","title":"Breadth x5","description":"Have at least one review in 5 different categories.","checkType":"distinct_categories_used","threshold":5},
+{"id":"breadth-10","title":"Breadth x10","description":"Have at least one review in 10 different categories.","checkType":"distinct_categories_used","threshold":10},
+{"id":"breadth-15","title":"Breadth x15","description":"Have at least one review in 15 different categories.","checkType":"distinct_categories_used","threshold":15},
+{"id":"breadth-20","title":"Breadth x20","description":"Have at least one review in 20 different categories.","checkType":"distinct_categories_used","threshold":20},
+
+{"id":"photo-1","title":"Photo Journal x1","description":"Attach a photo to 1 review.","checkType":"photo_count","threshold":1},
+{"id":"photo-10","title":"Photo Journal x10","description":"Attach photos to 10 reviews.","checkType":"photo_count","threshold":10},
+{"id":"photo-25","title":"Photo Journal x25","description":"Attach photos to 25 reviews.","checkType":"photo_count","threshold":25},
+{"id":"photo-50","title":"Photo Journal x50","description":"Attach photos to 50 reviews.","checkType":"photo_count","threshold":50},
+{"id":"photo-100","title":"Photo Journal x100","description":"Attach photos to 100 reviews.","checkType":"photo_count","threshold":100},
+
+{"id":"location-1","title":"Cartographer x1","description":"Pin a location on 1 review.","checkType":"location_count","threshold":1},
+{"id":"location-10","title":"Cartographer x10","description":"Pin a location on 10 reviews.","checkType":"location_count","threshold":10},
+{"id":"location-25","title":"Cartographer x25","description":"Pin a location on 25 reviews.","checkType":"location_count","threshold":25},
+{"id":"location-50","title":"Cartographer x50","description":"Pin a location on 50 reviews.","checkType":"location_count","threshold":50},
+{"id":"map-tap-10","title":"Map Tapper","description":"Use the interactive pin picker 10 times.","checkType":"manual_pin_count","threshold":10},
+{"id":"full-picture","title":"Full Picture","description":"Save a single review with both a photo and a location attached.","checkType":"photo_and_location","threshold":1},
+
+{"id":"share-1","title":"Shared x1","description":"Successfully share 1 review.","checkType":"share_count","threshold":1},
+{"id":"share-10","title":"Shared x10","description":"Successfully share 10 reviews.","checkType":"share_count","threshold":10},
+{"id":"share-25","title":"Shared x25","description":"Successfully share 25 reviews.","checkType":"share_count","threshold":25},
+{"id":"share-50","title":"Shared x50","description":"Successfully share 50 reviews.","checkType":"share_count","threshold":50},
+{"id":"backup-1","title":"Backed Up x1","description":"Export a backup 1 time.","checkType":"backup_count","threshold":1},
+{"id":"backup-5","title":"Backed Up x5","description":"Export a backup 5 times.","checkType":"backup_count","threshold":5},
+{"id":"backup-10","title":"Backed Up x10","description":"Export a backup 10 times.","checkType":"backup_count","threshold":10},
+{"id":"restore-1","title":"Restorer","description":"Successfully restore from a backup file.","checkType":"restore_count","threshold":1},
+
+{"id":"hour-0","title":"The Midnight Review","description":"Save a review between 00:00 and 00:59.","checkType":"review_at_hour","threshold":0},
+{"id":"hour-6","title":"The Sunrise Review","description":"Save a review between 06:00 and 06:59.","checkType":"review_at_hour","threshold":6},
+{"id":"hour-12","title":"The High Noon Review","description":"Save a review between 12:00 and 12:59.","checkType":"review_at_hour","threshold":12},
+{"id":"hour-18","title":"The Dusk Review","description":"Save a review between 18:00 and 18:59.","checkType":"review_at_hour","threshold":18},
+{"id":"hour-23","title":"The Last Call Review","description":"Save a review between 23:00 and 23:59.","checkType":"review_at_hour","threshold":23},
+
+{"id":"dow-0","title":"Sunday Regular","description":"Log a review on a Sunday.","checkType":"day_of_week_count","threshold":1,"dayOfWeek":0},
+{"id":"dow-1","title":"Monday Regular","description":"Log a review on a Monday.","checkType":"day_of_week_count","threshold":1,"dayOfWeek":1},
+{"id":"dow-2","title":"Tuesday Regular","description":"Log a review on a Tuesday.","checkType":"day_of_week_count","threshold":1,"dayOfWeek":2},
+{"id":"dow-3","title":"Wednesday Regular","description":"Log a review on a Wednesday.","checkType":"day_of_week_count","threshold":1,"dayOfWeek":3},
+{"id":"dow-4","title":"Thursday Regular","description":"Log a review on a Thursday.","checkType":"day_of_week_count","threshold":1,"dayOfWeek":4},
+{"id":"dow-5","title":"Friday Regular","description":"Log a review on a Friday.","checkType":"day_of_week_count","threshold":1,"dayOfWeek":5},
+{"id":"dow-6","title":"Saturday Regular","description":"Log a review on a Saturday.","checkType":"day_of_week_count","threshold":1,"dayOfWeek":6},
+{"id":"full-week-coverage","title":"Full Week Coverage","description":"Log at least one review on every day of the week across your history.","checkType":"all_weekdays_covered","threshold":1},
+
+{"id":"perfect-1","title":"Perfect Score","description":"Achieve a 25/25 total score.","checkType":"perfect_score","threshold":1},
+{"id":"zero-1","title":"Zero Hero","description":"Submit a review with a total score of 0.","checkType":"zero_score","threshold":1},
+{"id":"harmony-max","title":"The Harmonizer","description":"Achieve a harmony score of 5 in character mode.","checkType":"max_harmony","threshold":1},
+{"id":"harmony-min","title":"Chaos Agent","description":"Achieve a harmony score of 0 in character mode.","checkType":"min_harmony","threshold":1},
+{"id":"intensity-max","title":"High Intensity","description":"Achieve an intensity of 5.0 in character mode.","checkType":"max_intensity","threshold":1},
+{"id":"intensity-min","title":"Low Key","description":"Achieve an intensity of 0 in character mode.","checkType":"min_intensity","threshold":1},
+{"id":"all-grades","title":"Balanced Palate","description":"Earn every letter grade (S through F) at least once.","checkType":"all_grades_earned","threshold":1},
+
+{"id":"leap-day","title":"Leap Day Logger","description":"Save a review on February 29th.","checkType":"leap_day","threshold":1},
+{"id":"new-year","title":"New Year, New Review","description":"Review something on January 1st.","checkType":"jan_first","threshold":1},
+{"id":"anniversary","title":"Anniversary","description":"Review something exactly one year after your first review.","checkType":"one_year_anniversary","threshold":1},
+{"id":"midnight-straddle","title":"Midnight Straddle","description":"Save one review right before midnight and another right after.","checkType":"midnight_straddle","threshold":1},
+
+{"id":"secret-found","title":"You Found It","description":"Discover the secret achievements page for the first time.","checkType":"page_opened","threshold":1},
+{"id":"skeptic","title":"The Skeptic","description":"View the achievements page before earning a single achievement.","checkType":"viewed_before_any","threshold":1},
+{"id":"bulk-delete-reviews","title":"Spring Cleaning","description":"Delete 5+ reviews in a single bulk-select session.","checkType":"bulk_delete_reviews","threshold":5},
+{"id":"bulk-delete-cats","title":"Category Purge","description":"Delete 3+ categories in a single bulk-select session.","checkType":"bulk_delete_categories","threshold":3},
+{"id":"cancel-delete-5","title":"Second Thoughts","description":"Cancel a delete confirmation modal 5 times.","checkType":"delete_cancelled","threshold":5},
+{"id":"pentagon-devotee","title":"Pentagon Devotee","description":"Open the streak calendar 50 times.","checkType":"calendar_opened","threshold":50}
+];
+
+// ── COUNTER STORAGE (for things not already tracked) ─────────────────────
+function bumpCounter(key){
+  try{
+    const n=parseInt(localStorage.getItem(key)||'0',10)+1;
+    localStorage.setItem(key,String(n));
+    return n;
+  }catch(e){ return 0; }
+}
+function getCounter(key){
+  try{ return parseInt(localStorage.getItem(key)||'0',10); }catch(e){ return 0; }
+}
+function setMaxCounter(key,val){
+  try{
+    const cur=parseInt(localStorage.getItem(key)||'0',10);
+    if(val>cur) localStorage.setItem(key,String(val));
+  }catch(e){}
+}
+
+// ── GENERIC EVALUATION ENGINE ─────────────────────────────────────────────
+function computeAchievementStats(){
+  const now=new Date();
+  const byCat={}, dayReviewCounts={}, hoursSeen=new Set(), weekdaysSeen=new Set();
+  let gradeCounts={S:0,A:0,B:0,C:0,D:0,F:0}, starCounts={1:0,2:0,3:0,4:0,5:0};
+  let photoCount=0, locationCount=0, photoAndLocation=false;
+  let perfectScore=false, zeroScore=false, maxHarmony=false, minHarmony=false, maxIntensity=false, minIntensity=false;
+  let leapDay=false, janFirst=false;
+  let firstReviewDate=null;
+
+  savedReviews.forEach(r=>{
+    const d=new Date(r.ts);
+    const dayKey=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    dayReviewCounts[dayKey]=(dayReviewCounts[dayKey]||0)+1;
+    byCat[r.catId]=(byCat[r.catId]||0)+1;
+    hoursSeen.add(d.getHours());
+    weekdaysSeen.add(d.getDay());
+    if(r.grade && gradeCounts[r.grade]!==undefined) gradeCounts[r.grade]++;
+    if(r.stars && r.curStars) starCounts[r.curStars]=(starCounts[r.curStars]||0)+1;
+    if(r.photoDataUrl) photoCount++;
+    if(r.location) locationCount++;
+    if(r.photoDataUrl && r.location) photoAndLocation=true;
+    if(r.mode==='review'){
+      if(r.total===r.max) perfectScore=true;
+      if(r.total===0) zeroScore=true;
+    }
+    if(r.mode==='profile'){
+      if(r.harmony===SCALE) maxHarmony=true;
+      if(r.harmony===0) minHarmony=true;
+      if(r.intensity===SCALE) maxIntensity=true;
+      if(r.intensity===0) minIntensity=true;
+    }
+    if(d.getMonth()===1 && d.getDate()===29) leapDay=true;
+    if(d.getMonth()===0 && d.getDate()===1) janFirst=true;
+    if(!firstReviewDate || d<firstReviewDate) firstReviewDate=d;
+  });
+
+  let oneYearAnniversary=false;
+  if(firstReviewDate){
+    savedReviews.forEach(r=>{
+      const d=new Date(r.ts);
+      if(d.getMonth()===firstReviewDate.getMonth() && d.getDate()===firstReviewDate.getDate() && d.getFullYear()>firstReviewDate.getFullYear()) oneYearAnniversary=true;
+    });
+  }
+
+  // midnight straddle: any review within 2 min before midnight AND any review within 2 min after midnight on the following day
+  let midnightStraddle=false;
+  const nearMidnightEnd=savedReviews.filter(r=>{ const d=new Date(r.ts); return d.getHours()===23 && d.getMinutes()>=58; });
+  const nearMidnightStart=savedReviews.filter(r=>{ const d=new Date(r.ts); return d.getHours()===0 && d.getMinutes()<=2; });
+  nearMidnightEnd.forEach(a=>{
+    nearMidnightStart.forEach(b=>{
+      const da=new Date(a.ts), db=new Date(b.ts);
+      const diffDays=(db-da)/86400000;
+      if(diffDays>0 && diffDays<0.01) midnightStraddle=true;
+    });
+  });
+
+  const singleCategoryMax=Object.keys(byCat).length?Math.max(...Object.values(byCat)):0;
+  const dailyMax=Object.keys(dayReviewCounts).length?Math.max(...Object.values(dayReviewCounts)):0;
+  const allGradesEarned=Object.values(gradeCounts).every(v=>v>0);
+  const allWeekdaysCovered=weekdaysSeen.size>=7;
+
+  return {
+    totalReviews:savedReviews.length,
+    currentStreak:getCurrentStreak(),
+    consecutiveMonthStreaks:getConsecutiveMonthStreaks(),
+    gradeCounts, starCounts,
+    categoryCount:registry.length,
+    singleCategoryMax, dailyMax,
+    distinctCategoriesUsed:Object.keys(byCat).length,
+    photoCount, locationCount, photoAndLocation,
+    shareCount:getCounter('rr_share_count'),
+    backupCount:getCounter('rr_backup_count'),
+    restoreCount:getCounter('rr_restore_count'),
+    dupeWarningShown:getCounter('rr_dupe_warning_count')>0,
+    manualPinCount:getCounter('rr_manual_pin_count'),
+    calendarOpened:getCounter('rr_calendar_opened_count'),
+    pageOpened:getCounter('rr_secret_found_count')>0,
+    viewedBeforeAny:localStorage.getItem('rr_skeptic_earned')==='1',
+    bulkDeleteReviewsMax:getCounter('rr_bulk_delete_review_max'),
+    bulkDeleteCatsMax:getCounter('rr_bulk_delete_cat_max'),
+    deleteCancelledCount:getCounter('rr_delete_cancelled_count'),
+    hoursSeen, weekdaysSeen,
+    perfectScore, zeroScore, maxHarmony, minHarmony, maxIntensity, minIntensity,
+    allGradesEarned, allWeekdaysCovered,
+    leapDay, janFirst, oneYearAnniversary, midnightStraddle
+  };
+}
+
+function getConsecutiveMonthStreaks(){
+  try{
+    const earned=JSON.parse(localStorage.getItem('rr_month_streaks_earned')||'[]');
+    if(!earned.length) return 0;
+    // sort chronologically, count consecutive run ending at the most recent
+    const sorted=[...earned].sort();
+    let run=1;
+    for(let i=sorted.length-1;i>0;i--){
+      const [y1,m1]=sorted[i].split('-').map(Number);
+      const [y2,m2]=sorted[i-1].split('-').map(Number);
+      const monthsApart=(y1*12+m1)-(y2*12+m2);
+      if(monthsApart===1) run++;
+      else break;
+    }
+    return run;
+  }catch(e){ return 0; }
+}
+
+function evaluateAchievements(){
+  const stats=computeAchievementStats();
+  ACHIEVEMENT_DEFS.forEach(def=>{
+    if(achievements.find(a=>a.id===def.id)) return; // already unlocked
+    let met=false;
+    switch(def.checkType){
+      case 'total_review_count': met=stats.totalReviews>=def.threshold; break;
+      case 'reviews_in_one_day': met=stats.dailyMax>=def.threshold; break;
+      case 'current_streak': met=stats.currentStreak>=def.threshold; break;
+      case 'consecutive_month_streaks': met=stats.consecutiveMonthStreaks>=def.threshold; break;
+      case 'grade_count': met=(stats.gradeCounts[def.grade]||0)>=def.threshold; break;
+      case 'star_count': met=(stats.starCounts[def.stars]||0)>=def.threshold; break;
+      case 'category_count': met=stats.categoryCount>=def.threshold; break;
+      case 'dupe_warning_shown': met=stats.dupeWarningShown; break;
+      case 'single_category_count': met=stats.singleCategoryMax>=def.threshold; break;
+      case 'distinct_categories_used': met=stats.distinctCategoriesUsed>=def.threshold; break;
+      case 'photo_count': met=stats.photoCount>=def.threshold; break;
+      case 'location_count': met=stats.locationCount>=def.threshold; break;
+      case 'manual_pin_count': met=stats.manualPinCount>=def.threshold; break;
+      case 'photo_and_location': met=stats.photoAndLocation; break;
+      case 'share_count': met=stats.shareCount>=def.threshold; break;
+      case 'backup_count': met=stats.backupCount>=def.threshold; break;
+      case 'restore_count': met=stats.restoreCount>=def.threshold; break;
+      case 'review_at_hour': met=stats.hoursSeen.has(def.threshold); break;
+      case 'day_of_week_count': met=stats.weekdaysSeen.has(def.dayOfWeek); break;
+      case 'all_weekdays_covered': met=stats.allWeekdaysCovered; break;
+      case 'perfect_score': met=stats.perfectScore; break;
+      case 'zero_score': met=stats.zeroScore; break;
+      case 'max_harmony': met=stats.maxHarmony; break;
+      case 'min_harmony': met=stats.minHarmony; break;
+      case 'max_intensity': met=stats.maxIntensity; break;
+      case 'min_intensity': met=stats.minIntensity; break;
+      case 'all_grades_earned': met=stats.allGradesEarned; break;
+      case 'leap_day': met=stats.leapDay; break;
+      case 'jan_first': met=stats.janFirst; break;
+      case 'one_year_anniversary': met=stats.oneYearAnniversary; break;
+      case 'midnight_straddle': met=stats.midnightStraddle; break;
+      case 'page_opened': met=stats.pageOpened; break;
+      case 'viewed_before_any': met=stats.viewedBeforeAny; break;
+      case 'bulk_delete_reviews': met=stats.bulkDeleteReviewsMax>=def.threshold; break;
+      case 'bulk_delete_categories': met=stats.bulkDeleteCatsMax>=def.threshold; break;
+      case 'delete_cancelled': met=stats.deleteCancelledCount>=def.threshold; break;
+      case 'calendar_opened': met=stats.calendarOpened>=def.threshold; break;
+      case 'unsupported': met=false; break; // feature doesn't exist yet (e.g. axis renaming)
+    }
+    if(met) unlockAchievement(def.id,def.title,def.description);
+  });
 }
 
 function openStreakCalendar(){
   renderStreakCalendar();
   document.getElementById('streak-calendar-page').style.display='flex';
+  bumpCounter('rr_calendar_opened_count');
+  const wasFirstFind=getCounter('rr_secret_found_count')===0;
+  bumpCounter('rr_secret_found_count');
+  if(!achievements.length && wasFirstFind){
+    localStorage.setItem('rr_skeptic_earned','1');
+  }
+  evaluateAchievements();
 }
 function closeAchievementsPage(){
   document.getElementById('streak-calendar-page').style.display='none';
@@ -1283,6 +1657,11 @@ function closeAchievementsPage(){
 function openAchievementsPage(){
   renderAchievementsList();
   document.getElementById('achievements-list-page').style.display='flex';
+  if(!achievements.length){
+    localStorage.setItem('rr_skeptic_earned','1');
+    evaluateAchievements();
+    renderAchievementsList();
+  }
 }
 function closeAchievementsListPage(){
   document.getElementById('achievements-list-page').style.display='none';
@@ -1417,6 +1796,13 @@ function checkFullMonthStreak(){
   if(streak>=need && fullMonthStreakShownFor!==monthKey){
     fullMonthStreakShownFor=monthKey;
     localStorage.setItem('rr_streak_celebrated',monthKey);
+    try{
+      const earned=JSON.parse(localStorage.getItem('rr_month_streaks_earned')||'[]');
+      if(!earned.includes(monthKey)){
+        earned.push(monthKey);
+        localStorage.setItem('rr_month_streaks_earned',JSON.stringify(earned));
+      }
+    }catch(e){}
     showMonthStreakCelebration(need,monthKey);
   }
 }
@@ -1755,11 +2141,13 @@ function toggleReviewSelection(id){
   renderSavedReviewsList();
 }
 function deleteSelectedReviews(){
+  setMaxCounter('rr_bulk_delete_review_max',selectedReviewIds.size);
   savedReviews=savedReviews.filter(r=>!selectedReviewIds.has(r.id));
   saveSavedReviews(savedReviews);
   selectModeActive=false;
   selectedReviewIds.clear();
   renderSavedReviewsList();
+  evaluateAchievements();
 }
 
 function viewSavedReview(id){
@@ -1880,7 +2268,8 @@ async function shareViewedReview(btn){
     if(navigator.share){
       try{
         await navigator.share({title,text});
-        btnFeedback(btn,'\u2713 shared!','#97C459','#1a2e0a',2500);
+        bumpCounter('rr_share_count'); evaluateAchievements();
+      btnFeedback(btn,'\u2713 shared!','#97C459','#1a2e0a',2500);
       }catch(err){
         if(err.name==='AbortError') return;
         btnFeedback(btn,'share unavailable','#57544C','#E8E6DE',2000);
@@ -2148,6 +2537,7 @@ async function shareReview(btn){
     try{
       const shareData=files.length&&navigator.canShare&&navigator.canShare({files})?{title,text,files}:{title,text};
       await navigator.share(shareData);
+      bumpCounter('rr_share_count'); evaluateAchievements();
       btnFeedback(btn,'\u2713 shared!','#97C459','#1a2e0a',2500);
       return;
     }catch(err){
@@ -2203,6 +2593,11 @@ function showConfirmModal(text,onYes,confirmLabel){
 function closeConfirmModal(){
   document.getElementById('confirm-modal').style.display='none';
   confirmModalCallback=null;
+}
+function cancelConfirmModal(){
+  bumpCounter('rr_delete_cancelled_count');
+  evaluateAchievements();
+  closeConfirmModal();
 }
 function confirmModalYes(){
   const cb=confirmModalCallback;
@@ -2390,6 +2785,7 @@ function checkCatNameDupe(val){
   if(exact){
     hint.style.color='#E24B4A';
     hint.textContent=`"${name}" already exists \u2014 choose a different name`;
+    bumpCounter('rr_dupe_warning_count'); evaluateAchievements();
     return;
   }
   // show partial matches as suggestions
