@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.33</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.34</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -373,11 +373,11 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
   <div class="btn-row" style="flex-shrink:0;padding-top:10px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeAchievementsPage()">back</div>
-    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="openAchievementsPage()">achievements →</div>
   </div>
 </div>
 
-<!-- SECRET ACHIEVEMENTS PAGE (opened from calendar link) -->
+<!-- SECRET ACHIEVEMENTS PAGE (opened only via drawing a 5-point star gesture on the calendar) -->
+<div id="sc-gesture-overlay" style="position:fixed;inset:0;z-index:185;pointer-events:none;display:none"></div>
 <div id="achievements-list-page" style="display:none;position:fixed;inset:0;background:#141412;z-index:190;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Special Elite',monospace">
   <div style="display:flex;align-items:center;justify-content:center;margin-bottom:18px;flex-shrink:0">
     <div style="color:#FFE8B0;font-size:0.95em;font-weight:bold;letter-spacing:1px">achievements</div>
@@ -1644,28 +1644,158 @@ function openStreakCalendar(){
   renderStreakCalendar();
   document.getElementById('streak-calendar-page').style.display='flex';
   bumpCounter('rr_calendar_opened_count');
-  const wasFirstFind=getCounter('rr_secret_found_count')===0;
-  bumpCounter('rr_secret_found_count');
-  if(!achievements.length && wasFirstFind){
-    localStorage.setItem('rr_skeptic_earned','1');
-  }
   evaluateAchievements();
+  attachStarGestureListener();
 }
 function closeAchievementsPage(){
   document.getElementById('streak-calendar-page').style.display='none';
+  detachStarGestureListener();
 }
 function openAchievementsPage(){
-  renderAchievementsList();
-  document.getElementById('achievements-list-page').style.display='flex';
+  const wasFirstFind=getCounter('rr_secret_found_count')===0;
+  bumpCounter('rr_secret_found_count');
   if(!achievements.length){
     localStorage.setItem('rr_skeptic_earned','1');
-    evaluateAchievements();
-    renderAchievementsList();
   }
+  evaluateAchievements();
+  renderAchievementsList();
+  document.getElementById('achievements-list-page').style.display='flex';
 }
 function closeAchievementsListPage(){
   document.getElementById('achievements-list-page').style.display='none';
 }
+
+// ── SECRET GESTURE: draw a 5-point star (single continuous stroke) to open achievements ──
+let gesturePoints=[];
+let gestureActive=false;
+let gestureListenerAttached=false;
+const gestureOverlay=null; // set lazily below
+
+function attachStarGestureListener(){
+  if(gestureListenerAttached) return;
+  gestureListenerAttached=true;
+  const page=document.getElementById('streak-calendar-page');
+  page.addEventListener('touchstart',gestureStart,{passive:true});
+  page.addEventListener('touchmove',gestureMove,{passive:true});
+  page.addEventListener('touchend',gestureEnd,{passive:true});
+  page.addEventListener('mousedown',gestureStart);
+  page.addEventListener('mousemove',gestureMove);
+  page.addEventListener('mouseup',gestureEnd);
+}
+function detachStarGestureListener(){
+  gestureListenerAttached=false;
+  const page=document.getElementById('streak-calendar-page');
+  page.removeEventListener('touchstart',gestureStart);
+  page.removeEventListener('touchmove',gestureMove);
+  page.removeEventListener('touchend',gestureEnd);
+  page.removeEventListener('mousedown',gestureStart);
+  page.removeEventListener('mousemove',gestureMove);
+  page.removeEventListener('mouseup',gestureEnd);
+}
+
+function gestureXY(e){
+  const t=e.touches&&e.touches[0]?e.touches[0]:e;
+  return {x:t.clientX,y:t.clientY};
+}
+function gestureStart(e){
+  gestureActive=true;
+  gesturePoints=[gestureXY(e)];
+  showGestureOverlay();
+}
+function gestureMove(e){
+  if(!gestureActive) return;
+  gesturePoints.push(gestureXY(e));
+  drawGestureTrail();
+}
+function gestureEnd(){
+  if(!gestureActive) return;
+  gestureActive=false;
+  hideGestureOverlay();
+  if(gesturePoints.length>10 && detectStarGesture(gesturePoints)){
+    openAchievementsPage();
+  }
+  gesturePoints=[];
+}
+
+function showGestureOverlay(){
+  const ov=document.getElementById('sc-gesture-overlay');
+  ov.style.display='block';
+  ov.innerHTML='<svg width="100%" height="100%" style="position:absolute;inset:0"><polyline id="sc-gesture-trail" fill="none" stroke="#F2A623" stroke-width="2" opacity="0.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function drawGestureTrail(){
+  const trail=document.getElementById('sc-gesture-trail');
+  if(!trail) return;
+  trail.setAttribute('points',gesturePoints.map(p=>`${p.x},${p.y}`).join(' '));
+}
+function hideGestureOverlay(){
+  const ov=document.getElementById('sc-gesture-overlay');
+  ov.style.display='none';
+  ov.innerHTML='';
+}
+
+// Rotation-invariant 5-point-star detector: works starting from any point, any direction.
+// A one-stroke star has ~5 sharp corners and several self-intersections, and roughly closes back near its start.
+function detectStarGesture(points){
+  // 1. resample to reduce touch jitter noise
+  const resampled=resamplePath(points,8);
+  if(resampled.length<10) return false;
+
+  // 2. find corners via cumulative turn-angle since last corner
+  const corners=[resampled[0]];
+  let cumAngle=0;
+  for(let i=1;i<resampled.length-1;i++){
+    const a=angleBetween(resampled[i-1],resampled[i],resampled[i+1]);
+    cumAngle+=Math.abs(a);
+    if(cumAngle>55*Math.PI/180){ corners.push(resampled[i]); cumAngle=0; }
+  }
+  corners.push(resampled[resampled.length-1]);
+  if(corners.length<4 || corners.length>8) return false;
+
+  // 3. count self-intersections among the corner-to-corner segments (a star crosses itself repeatedly)
+  let crossings=0;
+  for(let i=0;i<corners.length-1;i++){
+    for(let j=i+2;j<corners.length-1;j++){
+      if(i===0 && j===corners.length-2) continue; // skip the closing segment vs first (adjacent when path closes)
+      if(segmentsIntersect(corners[i],corners[i+1],corners[j],corners[j+1])) crossings++;
+    }
+  }
+  if(crossings<3) return false;
+
+  // 4. path should roughly return near where it started (closing the star)
+  const start=resampled[0], end=resampled[resampled.length-1];
+  const bbox=boundingBoxDiagonal(resampled);
+  const closeDist=Math.hypot(end.x-start.x,end.y-start.y);
+  if(closeDist>bbox*0.45) return false;
+
+  return true;
+}
+function resamplePath(points,step){
+  const out=[points[0]];
+  let acc=0;
+  for(let i=1;i<points.length;i++){
+    const d=Math.hypot(points[i].x-points[i-1].x,points[i].y-points[i-1].y);
+    acc+=d;
+    if(acc>=step){ out.push(points[i]); acc=0; }
+  }
+  out.push(points[points.length-1]);
+  return out;
+}
+function angleBetween(a,b,c){
+  const v1={x:b.x-a.x,y:b.y-a.y}, v2={x:c.x-b.x,y:c.y-b.y};
+  const dot=v1.x*v2.x+v1.y*v2.y;
+  const cross=v1.x*v2.y-v1.y*v2.x;
+  return Math.atan2(cross,dot);
+}
+function segmentsIntersect(p1,p2,p3,p4){
+  function ccw(a,b,c){ return (c.y-a.y)*(b.x-a.x) > (b.y-a.y)*(c.x-a.x); }
+  return ccw(p1,p3,p4)!==ccw(p2,p3,p4) && ccw(p1,p2,p3)!==ccw(p1,p2,p4);
+}
+function boundingBoxDiagonal(points){
+  const xs=points.map(p=>p.x), ys=points.map(p=>p.y);
+  const w=Math.max(...xs)-Math.min(...xs), h=Math.max(...ys)-Math.min(...ys);
+  return Math.hypot(w,h)||1;
+}
+
 
 function renderAchievementsList(){
   const listEl=document.getElementById('achievements-list');
