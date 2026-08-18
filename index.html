@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.35</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.36</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -1690,7 +1690,7 @@ function attachStarGestureListener(){
   gestureListenerAttached=true;
   const page=document.getElementById('streak-calendar-page');
   page.addEventListener('touchstart',gestureStart,{passive:true});
-  page.addEventListener('touchmove',gestureMove,{passive:true});
+  page.addEventListener('touchmove',gestureMove,{passive:false});
   page.addEventListener('touchend',gestureEnd,{passive:true});
   page.addEventListener('mousedown',gestureStart);
   page.addEventListener('mousemove',gestureMove);
@@ -1719,6 +1719,7 @@ function gestureStart(e){
 }
 function gestureMove(e){
   if(!gestureActive) return;
+  if(e.cancelable) e.preventDefault();
   gesturePoints.push(gestureXY(e));
   drawGestureTrail();
 }
