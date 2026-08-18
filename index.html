@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.47</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.48</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -259,16 +259,33 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   </div>
 </div>
 
+<!-- SCREEN 2c: compare two reviews -->
+<div class="screen" id="s-compare">
+  <div class="hdr" style="display:flex;justify-content:space-between">
+    <span id="compare-item-a" style="color:#F2A623"></span>
+    <span id="compare-item-b" style="color:#E8E6DE"></span>
+  </div>
+  <div style="flex:1;overflow-y:auto">
+    <div id="compare-radar-wrap"></div>
+    <div id="compare-stats-row" style="display:flex;justify-content:space-around;margin:8px 0 14px;font-size:0.95em;font-weight:bold"></div>
+    <div id="compare-axes-table"></div>
+  </div>
+  <div class="btn-row" style="flex-shrink:0;padding-top:10px">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeCompareView()">back</div>
+  </div>
+</div>
+
 <!-- SCREEN 3: item name -->
 <div class="screen" id="s-item">
   <div class="hdr"><span id="hdr-item-cat"></span><span id="hdr-item-live"></span></div>
   <div class="field-label" id="item-screen-label" style="margin-bottom:6px;margin-top:4px">what are you reviewing?</div>
-  <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;width:100%;padding:8px;margin-bottom:8px;flex-shrink:0">
+  <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;width:100%;padding:8px;margin-bottom:4px;flex-shrink:0">
     <div id="item-input" contenteditable="true" role="textbox" data-placeholder="e.g. Nobu, Dune 2, …"
       style="font-family:'Special Elite',monospace;font-size:1em;font-weight:bold;color:#E8E6DE;outline:none;white-space:nowrap;overflow:hidden;background:transparent;text-align:center;width:100%;padding-top:6px"
-      oninput="document.getElementById('hdr-item-live').textContent=this.textContent.trim()"
+      oninput="document.getElementById('hdr-item-live').textContent=this.textContent.trim();checkDuplicateItem(this.textContent.trim())"
       onkeydown="if(event.key==='Enter'){event.preventDefault();startDial();}"></div>
   </div>
+  <div id="dup-item-hint" style="font-size:0.75em;text-align:center;margin-bottom:8px;min-height:1.1em"></div>
   <div style="flex:1"></div>
   <div class="btn-row">
     <div tabindex="0" class="btn" style="flex:1" onclick="renderCatSelect();showScreen('s-cat')">back</div>
@@ -924,6 +941,7 @@ function pickCat(cat){
   document.getElementById('item-screen-label').textContent=`add a ${cat.label} review`;
   document.getElementById('hdr-item-live').textContent='';
   document.getElementById('item-input').textContent='';
+  document.getElementById('dup-item-hint').innerHTML='';
   showScreen('s-item');
 }
 
@@ -984,6 +1002,19 @@ function updateExistingReview(cat,payload,scoreText){
 }
 
 // ── SCREEN 3: ITEM NAME ───────────────────────────────────────────────────
+function checkDuplicateItem(val){
+  const hint=document.getElementById('dup-item-hint');
+  const name=val.trim().toLowerCase();
+  if(!name || !curCat){ hint.innerHTML=''; return; }
+  const match=savedReviews.find(r=>r.catId===curCat.id && (r.item||'').trim().toLowerCase()===name);
+  if(match){
+    const d=new Date(match.ts).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    hint.innerHTML=`<span style="color:#c58a1e">you reviewed this before \u2014 ${d}, ${match.scoreText}</span> <span tabindex="0" style="color:#F2A623;text-decoration:underline;cursor:pointer" onclick="viewSavedReview('${match.id}')">view it</span>`;
+  } else {
+    hint.innerHTML='';
+  }
+}
+
 function startDial(){
   const inp=document.getElementById('item-input');
   const val=inp.textContent.trim();
@@ -2540,9 +2571,18 @@ function renderSavedReviewsList(){
   if(selectModeActive){
     const bar=document.createElement('div');
     bar.className='select-mode-bar';
+    let compareLink='';
+    if(selectedReviewIds.size===2){
+      const [idA,idB]=[...selectedReviewIds];
+      const recA=savedReviews.find(r=>r.id===idA), recB=savedReviews.find(r=>r.id===idB);
+      if(recA && recB && recA.catId===recB.catId){
+        compareLink=`<span tabindex="0" style="color:#F2A623;cursor:pointer" onclick="openCompareView('${idA}','${idB}')">compare</span>`;
+      }
+    }
     bar.innerHTML=`<span>${selectedReviewIds.size} selected</span>
       <span style="display:flex;gap:10px">
         <span tabindex="0" style="color:#A8A49E;cursor:pointer" onclick="exitSelectMode()">cancel</span>
+        ${compareLink}
         <span tabindex="0" style="color:#E24B4A;cursor:pointer" onclick="showConfirmModal('Delete '+selectedReviewIds.size+' review'+(selectedReviewIds.size===1?'':'s')+'? This cannot be undone.',deleteSelectedReviews)">delete</span>
       </span>`;
     listEl.appendChild(bar);
@@ -2609,6 +2649,83 @@ function exitSelectMode(){
   selectedReviewIds.clear();
   renderSavedReviewsList();
 }
+
+// ── COMPARE TWO SAVED REVIEWS ────────────────────────────────────────────
+function openCompareView(idA,idB){
+  const recA=savedReviews.find(r=>r.id===idA);
+  const recB=savedReviews.find(r=>r.id===idB);
+  if(!recA||!recB) return;
+
+  document.getElementById('compare-item-a').textContent=recA.item||'(untitled)';
+  document.getElementById('compare-item-b').textContent=recB.item||'(untitled)';
+
+  const axes=recA.axes;
+  document.getElementById('compare-radar-wrap').innerHTML=compareRadarSVG(axes,recA.scores,recB.scores);
+
+  const statsEl=document.getElementById('compare-stats-row');
+  if(recA.mode==='review'){
+    statsEl.innerHTML=`
+      <div style="text-align:center;color:#F2A623">${recA.total}/${recA.max} \u00b7 ${recA.grade}</div>
+      <div style="text-align:center;color:#E8E6DE">${recB.total}/${recB.max} \u00b7 ${recB.grade}</div>`;
+  } else {
+    statsEl.innerHTML=`
+      <div style="text-align:center;color:#F2A623">i:${recA.intensity} \u00b7 h:${recA.harmony}</div>
+      <div style="text-align:center;color:#E8E6DE">i:${recB.intensity} \u00b7 h:${recB.harmony}</div>`;
+  }
+
+  const tableEl=document.getElementById('compare-axes-table');
+  tableEl.innerHTML=axes.map(a=>{
+    const va=recA.scores[a]||0, vb=(recB.scores&&recB.scores[a])||0;
+    const aColor=va>vb?'#F2A623':'#7A7670';
+    const bColor=vb>va?'#E8E6DE':'#7A7670';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:0.5px solid #26241F;font-size:0.85em">
+      <span style="color:${aColor};width:24px;text-align:center;font-weight:${va>vb?'bold':'normal'}">${va}</span>
+      <span style="flex:1;text-align:center;color:#A8A49E">${a}</span>
+      <span style="color:${bColor};width:24px;text-align:center;font-weight:${vb>va?'bold':'normal'}">${vb}</span>
+    </div>`;
+  }).join('');
+
+  showScreen('s-compare');
+}
+
+function closeCompareView(){
+  exitSelectMode();
+  showScreen('s-cat');
+}
+
+function compareRadarSVG(axes,scoresA,scoresB){
+  const n=axes.length;
+  const cx=120, cy=90, rMax=58, rStep=rMax/SCALE;
+  function pt(i,r){ const a=(i/n)*2*Math.PI+Math.PI/2; return[cx+r*Math.cos(a),cy+r*Math.sin(a)]; }
+  function poly(r){ return Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' '); }
+  let svg=`<svg viewBox="0 0 240 180" style="width:100%">`;
+  for(let k=1;k<=SCALE;k++){
+    const op=k===SCALE?0.45:0.2;
+    svg+=`<polygon points="${poly(k*rStep)}" fill="none" stroke="#4A4741" stroke-width="${k===SCALE?0.8:0.5}" opacity="${op}"/>`;
+  }
+  for(let i=0;i<n;i++){ const p=pt(i,rMax); svg+=`<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="#2E2C28" stroke-width="0.5"/>`; }
+
+  const dptsA=axes.map((a,i)=>pt(i,(scoresA[a]||0)*rStep).join(',')).join(' ');
+  svg+=`<polygon points="${dptsA}" fill="#F2A623" fill-opacity="0.2" stroke="#F2A623" stroke-width="1.5" stroke-linejoin="round"/>`;
+  axes.forEach((a,i)=>{ const p=pt(i,(scoresA[a]||0)*rStep); svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="#F2A623"/>`; });
+
+  const dptsB=axes.map((a,i)=>pt(i,((scoresB&&scoresB[a])||0)*rStep).join(',')).join(' ');
+  svg+=`<polygon points="${dptsB}" fill="none" stroke="#E8E6DE" stroke-width="1.5" stroke-dasharray="3,2" stroke-linejoin="round"/>`;
+  axes.forEach((a,i)=>{ const p=pt(i,((scoresB&&scoresB[a])||0)*rStep); svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="#E8E6DE"/>`; });
+
+  const lblR=rMax+16;
+  axes.forEach((a,i)=>{
+    const p=pt(i,lblR);
+    const anch=p[0]<cx-4?'end':p[0]>cx+4?'start':'middle';
+    const label=truncateLabel(a);
+    const fs=label.length>8?9:11;
+    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="#8B8880" font-family="'Special Elite',monospace">${label}</text>`;
+  });
+
+  svg+='</svg>';
+  return svg;
+}
+
 function toggleReviewSelection(id){
   if(selectedReviewIds.has(id)) selectedReviewIds.delete(id);
   else selectedReviewIds.add(id);
