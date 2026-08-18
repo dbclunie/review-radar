@@ -92,8 +92,8 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .star-compact .star-icon:first-child{margin-left:0}
 .star-compact .star-stack{gap:0}
 .star-icon{cursor:pointer}
-.mode-example{background:#1E1C18;border:0.5px solid #33312C;border-radius:8px;padding:8px 8px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s;min-width:0;font-size:clamp(0.72em,3vw,0.9em)}
-.mode-example.sel{border-color:#F2A623;border-width:1.5px;box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
+.mode-example{background:#1E1C18;border:1px solid #33312C;border-radius:8px;padding:8px 8px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s,box-shadow .15s;min-width:0;font-size:clamp(0.72em,3vw,0.9em)}
+.mode-example.sel{border-color:#F2A623;box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
 .mode-example.unsel{opacity:0.8}
 .field-label{font-size:0.85em;color:#A8A49E;margin-bottom:4px}
 .field-input{width:100%;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;color:#E8E6DE;font-family:'Special Elite',monospace;font-size:1em;padding:10px 9px 6px 9px;outline:none;box-sizing:border-box}
@@ -161,7 +161,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.53</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.54</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -232,7 +232,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       </div>
       <div tabindex="0" class="btn" style="flex-shrink:0;padding:0 14px;display:flex;align-items:center" onclick="addAxis()">+</div>
     </div>
-    <div id="axis-hint" style="font-size:0.65em;color:#7A7670;margin-bottom:4px">try: crust · sauce · cheese · toppings · value</div>
+    <div id="axis-hint" style="font-size:0.65em;color:#7A7670;margin-bottom:4px;height:3.9em;line-height:1.3em;overflow:hidden">try: crust · sauce · cheese · toppings · value</div>
   </div>
   <div class="btn-row" style="flex-shrink:0;padding-top:6px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-cat')">cancel</div>
