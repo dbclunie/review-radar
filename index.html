@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.38</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.39</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -3136,6 +3136,20 @@ window.onPluginMessage=function(data){ console.log('r1 response',data); };
 // ── INIT ──────────────────────────────────────────────────────────────────
 registry=loadRegistry();
 savedReviews=loadSavedReviews();
+
+// One-time reset of achievements/gesture state (fixes stale-counter retroactive unlocks)
+if(!localStorage.getItem('rr_achievements_reset_v1')){
+  localStorage.removeItem('rr_achievements');
+  localStorage.removeItem('rr_gesture_success_count');
+  localStorage.removeItem('rr_gesture_fail_count');
+  localStorage.removeItem('rr_gesture_fastest_ms');
+  localStorage.removeItem('rr_gesture_max_bbox_pct');
+  localStorage.removeItem('rr_secret_found_count');
+  localStorage.removeItem('rr_skeptic_earned');
+  localStorage.setItem('rr_achievements_reset_v1','1');
+  achievements=[];
+}
+
 renderModeExamples();
 setMode('review');
 renderCatSelect();
