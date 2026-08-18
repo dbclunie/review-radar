@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.46</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.47</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -177,6 +177,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   </div>
   <div id="saved-reviews-label" style="font-size:1.125em;font-weight:bold;color:#A8A49E;margin-top:10px;flex-shrink:0;display:none;text-align:center">your reviews</div>
   <div id="saved-reviews-filter" style="display:none;margin-top:6px;flex-shrink:0"></div>
+  <div id="saved-reviews-avgstats" style="display:none;margin-top:4px;flex-shrink:0;text-align:center;font-size:0.72em;color:#7A7670"></div>
   <div id="saved-reviews-list" style="flex:1;overflow-y:auto;margin-top:4px"></div>
 </div>
 
@@ -773,6 +774,7 @@ function renderCatSelect(){
   registry.sort((a,b)=>a.label.localeCompare(b.label));
   catDDIdx=0;
   updateCatDDSelected();
+  renderRecentCategoryPills();
   const panel=document.getElementById('cat-dd-panel');
   panel.innerHTML='';
 
@@ -2426,6 +2428,66 @@ function showMonthStreakCelebration(monthLength,monthKey){
   };
 }
 
+function renderAvgStatsLine(filtered){
+  const statsEl=document.getElementById('saved-reviews-avgstats');
+  if(!filtered.length){ statsEl.style.display='none'; return; }
+
+  const reviewMode=filtered.filter(r=>r.mode==='review' && r.total!=null && r.max!=null);
+  const profileMode=filtered.filter(r=>r.mode==='profile' && r.intensity!=null);
+
+  const parts=[`${filtered.length} review${filtered.length===1?'':'s'}`];
+
+  if(reviewMode.length){
+    const sumTotal=reviewMode.reduce((s,r)=>s+r.total,0);
+    const sumMax=reviewMode.reduce((s,r)=>s+r.max,0);
+    const avgGrade=grade(sumTotal,sumMax);
+    parts.push(`avg ${avgGrade.g}`);
+  }
+  if(profileMode.length){
+    const avgIntensity=(profileMode.reduce((s,r)=>s+r.intensity,0)/profileMode.length).toFixed(1);
+    parts.push(`avg intensity ${avgIntensity}`);
+  }
+
+  statsEl.style.display='block';
+  statsEl.textContent=parts.join(' \u00b7 ');
+}
+
+function renderRecentCategoryPills(){
+  const wrapId='recent-cat-pills';
+  let wrap=document.getElementById(wrapId);
+  const ddContainer=document.getElementById('cat-dd').parentElement;
+
+  if(!wrap){
+    wrap=document.createElement('div');
+    wrap.id=wrapId;
+    wrap.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+    ddContainer.insertBefore(wrap,document.getElementById('cat-dd'));
+  }
+
+  // most recently used categories, by most recent review timestamp, deduped
+  const seen=new Set();
+  const recent=[];
+  const sorted=[...savedReviews].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  for(const rec of sorted){
+    if(seen.has(rec.catId)) continue;
+    const cat=registry.find(c=>c.id===rec.catId);
+    if(!cat) continue; // category may have been deleted since
+    seen.add(rec.catId);
+    recent.push(cat);
+    if(recent.length>=3) break;
+  }
+
+  if(recent.length<1 || registry.length<3){
+    wrap.style.display='none';
+    return;
+  }
+
+  wrap.style.display='flex';
+  wrap.innerHTML=recent.map(cat=>
+    `<div tabindex="0" class="btn" style="padding:5px 12px;font-size:0.78em;border-color:#F2A623;color:#F2A623" onclick="pickCat(registry.find(c=>c.id==='${cat.id}'))">${cat.label}</div>`
+  ).join('');
+}
+
 function renderSavedReviewsList(){
   const listEl=document.getElementById('saved-reviews-list');
   const labelEl=document.getElementById('saved-reviews-label');
@@ -2470,6 +2532,8 @@ function renderSavedReviewsList(){
     ? savedReviews.filter(r=>r.catId===reviewFilterCat)
     : [...savedReviews];
   filtered.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+
+  renderAvgStatsLine(filtered);
 
   listEl.innerHTML='';
 
