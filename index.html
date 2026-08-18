@@ -80,7 +80,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .divider{border-top:0.5px solid #33312C;margin:8px 0;flex-shrink:0}
 
 /* add-category form */
-.mode-example-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.mode-example-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:5px;max-width:min(260px,80%);margin-left:auto;margin-right:auto}
 .star-toggle-row{display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px;font-size:0.75em;color:#A8A49E;user-select:none}
 .star-toggle-box{width:0.9em;height:0.9em;border-radius:2px;border:1px solid #3A3833;background:#26241F;flex-shrink:0;position:relative}
 .star-toggle-box.on{background:#F2A623;border-color:#F2A623}
@@ -92,7 +92,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .star-compact .star-icon:first-child{margin-left:0}
 .star-compact .star-stack{gap:0}
 .star-icon{cursor:pointer}
-.mode-example{background:#1E1C18;border:0.5px solid #33312C;border-radius:8px;padding:5px 6px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s;min-width:0;font-size:0.72em}
+.mode-example{background:#1E1C18;border:0.5px solid #33312C;border-radius:8px;padding:4px 5px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s;min-width:0;font-size:clamp(0.6em,2.2vw,0.72em)}
 .mode-example.sel{border-color:#F2A623}
 .mode-example.unsel{opacity:0.5}
 .field-label{font-size:0.85em;color:#A8A49E;margin-bottom:4px}
@@ -161,7 +161,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.51</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.52</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -184,58 +184,58 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
 <!-- SCREEN 1b: add category -->
 <div class="screen" id="s-addcat">
-  <div style="text-align:center;font-size:0.75em;color:#A8A49E;letter-spacing:.05em;margin-bottom:4px;flex-shrink:0">ADD A CATEGORY</div>
+  <div style="text-align:center;font-size:0.72em;color:#A8A49E;letter-spacing:.05em;margin-bottom:3px;flex-shrink:0">ADD A CATEGORY</div>
   <div style="flex:1;overflow-y:auto">
-    <div class="field-label">category name</div>
-    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;width:100%;padding:4px 8px">
+    <div class="field-label" style="margin-bottom:2px">category name</div>
+    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;width:100%;padding:2px 8px">
       <div id="new-cat-name" contenteditable="true" role="textbox"
         data-placeholder="e.g. movie"
-        style="font-family:'Special Elite',monospace;font-size:1em;font-weight:bold;color:#E8E6DE;outline:none;white-space:nowrap;overflow:hidden;background:transparent;text-align:center;width:100%;padding-top:6px"
+        style="font-family:'Special Elite',monospace;font-size:0.95em;font-weight:bold;color:#E8E6DE;outline:none;white-space:nowrap;overflow:hidden;background:transparent;text-align:center;width:100%;padding-top:5px"
         onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('new-axis-input').focus();}"
         oninput="const el=this;if(el.textContent.length>20){const sel=window.getSelection();const node=sel.focusNode;const off=Math.min(sel.focusOffset,20);el.textContent=el.textContent.slice(0,20);const r=document.createRange();r.setStart(node&&el.contains(node)?node:el.firstChild||el,Math.min(off,el.firstChild?el.firstChild.length:0));r.collapse(true);sel.removeAllRanges();sel.addRange(r);}checkCatNameDupe(this.textContent.trim())"></div>
     </div>
-    <div id="cat-name-hint" style="font-size:0.72em;margin-top:3px;min-height:0.8em"></div>
-    
-    <div class="field-label">scoring type</div>
-    <div style="display:flex;gap:6px;margin-bottom:6px">
-      <div tabindex="0" class="btn" id="mode-profile" onclick="setMode('profile')" style="flex:1;text-align:center">character</div>
-      <div tabindex="0" class="btn" id="mode-review" onclick="setMode('review')" style="flex:1;text-align:center">score</div>
+    <div id="cat-name-hint" style="font-size:0.68em;margin-top:2px;min-height:0.7em"></div>
+
+    <div class="field-label" style="margin-top:4px;margin-bottom:2px">scoring type</div>
+    <div style="display:flex;gap:6px;margin-bottom:5px">
+      <div tabindex="0" class="btn" id="mode-profile" onclick="setMode('profile')" style="flex:1;text-align:center;padding:4px 10px">character</div>
+      <div tabindex="0" class="btn" id="mode-review" onclick="setMode('review')" style="flex:1;text-align:center;padding:4px 10px">score</div>
     </div>
     <div class="mode-example-grid">
       <div id="mode-example-profile" class="mode-example" onclick="setMode('profile')" style="cursor:pointer"></div>
       <div id="mode-example-review" class="mode-example" onclick="setMode('review')" style="cursor:pointer"></div>
     </div>
-    <div class="star-toggle-row" onclick="toggleNewCatStars()" style="justify-content:center">
+    <div class="star-toggle-row" onclick="toggleNewCatStars()" style="justify-content:center;margin-bottom:4px">
       <div class="star-toggle-box on" id="new-cat-stars-box"></div>
       <span>include 1–5 star rating (either type)</span>
     </div>
-    <div class="star-toggle-row" onclick="toggleNewCatLocation()" style="justify-content:center">
+    <div class="star-toggle-row" onclick="toggleNewCatLocation()" style="justify-content:center;margin-bottom:4px">
       <div class="star-toggle-box" id="new-cat-location-box"></div>
       <span>use location (either type)</span>
     </div>
-    <div class="star-toggle-row" onclick="toggleNewCatNote()" style="justify-content:center">
+    <div class="star-toggle-row" onclick="toggleNewCatNote()" style="justify-content:center;margin-bottom:0">
       <div class="star-toggle-box" id="new-cat-note-box"></div>
       <span>add a personal note field</span>
     </div>
   </div>
   <div style="flex-shrink:0">
-    <div style="display:flex;justify-content:space-between;align-items:baseline">
-      <div class="field-label">axes</div>
-      <div class="field-label" id="axis-count">0/5</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px">
+      <div class="field-label" style="margin-bottom:2px">axes</div>
+      <div class="field-label" id="axis-count" style="margin-bottom:2px">0/5</div>
     </div>
     <div class="axis-chips" id="new-axes-chips"></div>
-    <div style="display:flex;gap:8px;margin-bottom:4px">
-      <div style="flex:1;min-width:0;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;padding:8px;overflow:hidden">
+    <div style="display:flex;gap:8px;margin-bottom:2px">
+      <div style="flex:1;min-width:0;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;padding:6px;overflow:hidden">
         <div class="field-input" id="new-axis-input" contenteditable="true" role="textbox"
           data-placeholder="axis name"
-          style="outline:none;white-space:nowrap;overflow-x:auto;background:transparent;padding-top:6px;width:100%;scrollbar-width:none"
+          style="outline:none;white-space:nowrap;overflow-x:auto;background:transparent;padding-top:5px;width:100%;scrollbar-width:none"
           onkeydown="if(event.key==='Enter'){addAxis();event.preventDefault();}"></div>
       </div>
       <div tabindex="0" class="btn" style="flex-shrink:0;padding:0 14px;display:flex;align-items:center" onclick="addAxis()">+</div>
     </div>
-    <div id="axis-hint" style="font-size:0.7em;color:#7A7670;margin-bottom:8px">try: crust · sauce · cheese · toppings · value</div>
+    <div id="axis-hint" style="font-size:0.65em;color:#7A7670;margin-bottom:4px">try: crust · sauce · cheese · toppings · value</div>
   </div>
-  <div class="btn-row" style="flex-shrink:0;padding-top:10px">
+  <div class="btn-row" style="flex-shrink:0;padding-top:6px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-cat')">cancel</div>
     <div tabindex="0" class="btn primary" style="flex:1;text-align:center" onclick="saveNewCat()">save</div>
   </div>
