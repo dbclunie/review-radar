@@ -101,6 +101,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 #new-cat-name:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #item-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #new-axis-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
+#conf-note-input:empty::before{content:attr(data-placeholder);color:#5f4419;pointer-events:none;font-style:italic}
 #new-cat-name.err::before{color:#E24B4A}
 #new-cat-name.err{animation:blink-red .35s ease 2}
 @keyframes blink-red{0%,100%{border-color:#3A3833;background:#26241F}50%{border-color:#E24B4A;background:#3a1f1f}}
@@ -160,7 +161,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.50</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.51</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -173,7 +174,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
         ontouchend="cancelCatBtnPress()" ontouchmove="cancelCatBtnPress()"></div>
       <div class="custom-dd-panel" id="cat-dd-panel"></div>
     </div>
-    <div tabindex="0" class="btn" style="text-align:center" onclick="document.getElementById('new-cat-stars-box').classList.add('on');document.getElementById('new-cat-location-box').classList.remove('on');document.getElementById('cat-name-hint').textContent='';document.getElementById('new-cat-name').textContent='';newLocation=false;renderModeExamples();setMode('review');showScreen('s-addcat')">+category</div>
+    <div tabindex="0" class="btn" style="text-align:center" onclick="document.getElementById('new-cat-stars-box').classList.add('on');document.getElementById('new-cat-location-box').classList.remove('on');document.getElementById('new-cat-note-box').classList.remove('on');document.getElementById('cat-name-hint').textContent='';document.getElementById('new-cat-name').textContent='';newLocation=false;newNote=false;renderModeExamples();setMode('review');showScreen('s-addcat')">+category</div>
   </div>
   <div id="saved-reviews-label" style="font-size:1.125em;font-weight:bold;color:#A8A49E;margin-top:10px;flex-shrink:0;display:none;text-align:center">your reviews</div>
   <div id="saved-reviews-filter" style="display:none;margin-top:6px;flex-shrink:0"></div>
@@ -211,6 +212,10 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div class="star-toggle-row" onclick="toggleNewCatLocation()" style="justify-content:center">
       <div class="star-toggle-box" id="new-cat-location-box"></div>
       <span>use location (either type)</span>
+    </div>
+    <div class="star-toggle-row" onclick="toggleNewCatNote()" style="justify-content:center">
+      <div class="star-toggle-box" id="new-cat-note-box"></div>
+      <span>add a personal note field</span>
     </div>
   </div>
   <div style="flex-shrink:0">
@@ -339,6 +344,15 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div id="conf-location" style="font-size:0.68em;color:#7A7670;text-align:center;margin-top:2px"></div>
   <div id="conf-map-preview" style="display:none;height:100px;border-radius:6px;overflow:hidden;margin-top:4px;border:0.5px solid #33312C"></div>
 
+  <div id="conf-note-wrap" style="display:none;margin-top:6px">
+    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:6px 8px">
+      <div id="conf-note-input" contenteditable="true" role="textbox" data-placeholder="a quick note to yourself..."
+        style="font-family:'Special Elite',monospace;font-size:0.78em;color:#E8E6DE;outline:none;background:transparent;min-height:2.2em;line-height:1.4"
+        oninput="handleConfNoteInput(this)"></div>
+    </div>
+    <div id="conf-note-count" style="font-size:0.62em;color:#5f4419;text-align:right;margin-top:2px">0/255</div>
+  </div>
+
   <div style="display:flex;gap:8px;margin-top:6px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('photo-input-camera').click()">take photo</div>
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('photo-input-gallery').click()">from gallery</div>
@@ -367,6 +381,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div id="view-result"></div>
   <div id="view-location" style="font-size:0.75em;text-align:center;margin-top:4px"></div>
   <div id="view-map-preview" style="display:none;height:120px;border-radius:6px;overflow:hidden;margin-top:6px;border:0.5px solid #33312C"></div>
+  <div id="view-note" style="display:none;font-size:0.78em;color:#A8A49E;line-height:1.4;text-align:center;margin-top:8px;padding:6px 10px;background:#1A1814;border-radius:6px"></div>
   <div id="view-photo-display" style="display:none;margin-top:10px;text-align:center">
     <img id="view-photo-img" style="max-width:100%;border-radius:6px;cursor:pointer" onclick="window.open(this.src,'_blank')">
   </div>
@@ -653,6 +668,7 @@ function handleImportReviewFile(e){
       intensity:payload.intensity, harmony:payload.harmony,
       curStars:payload.stars||null,
       location:payload.location||null,
+      note:payload.note||null,
       photoDataUrl:null
     };
     savedReviews.unshift(rec);
@@ -702,6 +718,7 @@ let curCat = null;
 let curItem = '';
 let curStars = 3;
 let curLocation = null;  // null=not tried, false=failed/denied, object=success
+let curNote = '';
 let locationPending = false;
 let scores = {};
 let dialIdx = 0;
@@ -933,6 +950,7 @@ function pickCat(cat){
   curStars=3;
   curLocation=null;
   curMapSnapshot=null;
+  curNote='';
   locationPending=false;
   currentReviewSaved=false;
   currentReviewId=null;
@@ -955,7 +973,7 @@ function editSavedReview(id){
   // Prefer the live category (picks up any renamed axes/labels); fall back to the
   // record's own snapshot if the category itself was deleted since this review was made.
   const liveCat=registry.find(c=>c.id===rec.catId);
-  curCat=liveCat||{id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:[...rec.axes],stars:rec.stars,useLocation:!!rec.location};
+  curCat=liveCat||{id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:[...rec.axes],stars:rec.stars,useLocation:!!rec.location,useNote:!!rec.note};
 
   scores={};
   curCat.axes.forEach(a=>{ scores[a]=(rec.scores&&rec.scores[a]!==undefined)?rec.scores[a]:0; });
@@ -964,6 +982,7 @@ function editSavedReview(id){
   curStars=rec.curStars||3;
   curLocation=rec.location?{...rec.location}:null;
   curMapSnapshot=null;
+  curNote=rec.note||'';
   attachedPhoto=rec.photoDataUrl?dataUrlToFile(rec.photoDataUrl,'photo.jpg'):null;
   locationPending=false;
   currentReviewSaved=false;
@@ -990,6 +1009,7 @@ function updateExistingReview(cat,payload,scoreText){
   rec.intensity=payload.intensity; rec.harmony=payload.harmony;
   rec.curStars=payload.stars||null;
   rec.location=payload.location||null;
+  rec.note=payload.note||null;
   currentReviewId=rec.id;
   saveSavedReviews(savedReviews);
   renderSavedReviewsList();
@@ -1099,10 +1119,36 @@ function generateReviewQuote(cat,ax,scores){
   }
 }
 
+function handleConfNoteInput(el){
+  if(el.textContent.length>255){
+    const sel=window.getSelection();
+    const node=sel.focusNode;
+    const off=Math.min(sel.focusOffset,255);
+    el.textContent=el.textContent.slice(0,255);
+    const r=document.createRange();
+    r.setStart(node&&el.contains(node)?node:el.firstChild||el,Math.min(off,el.firstChild?el.firstChild.length:0));
+    r.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+  curNote=el.textContent;
+  document.getElementById('conf-note-count').textContent=`${curNote.length}/255`;
+}
+
 function renderConfirm(){
   const cat=curCat, ax=cat.axes;
   document.getElementById('hdr-conf-cat').textContent=cat.label.toUpperCase();
   document.getElementById('hdr-conf-mode').textContent=curItem||'';
+
+  const noteWrap=document.getElementById('conf-note-wrap');
+  if(cat.useNote){
+    noteWrap.style.display='block';
+    const noteEl=document.getElementById('conf-note-input');
+    noteEl.textContent=curNote||'';
+    document.getElementById('conf-note-count').textContent=`${(curNote||'').length}/255`;
+  } else {
+    noteWrap.style.display='none';
+  }
 
   // bars
   const bars=document.getElementById('conf-bars');
@@ -1188,7 +1234,7 @@ async function preGenerateShareFile(){
   preGeneratedPayload=payload;
   preGeneratedStamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
   const quoteEl=document.getElementById('conf-quote');
-  preGeneratedFile=await generateReviewFile(cat,scoreText,attachedPhoto,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot);
+  preGeneratedFile=await generateReviewFile(cat,scoreText,attachedPhoto,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
   preGenerating=false;
 }
 function setConfirmStars(n){
@@ -1377,6 +1423,7 @@ function buildHumanBody(cat,payload,scoreText,rec){
   }
   if(payload.location) lines.push(`\uD83D\uDCCD ${payload.location.address||payload.location.lat.toFixed(5)+', '+payload.location.lng.toFixed(5)}`);
   if(payload.location) lines.push(`   https://maps.google.com/?q=${payload.location.lat},${payload.location.lng}`);
+  if(payload.note) lines.push(`\nnote: ${payload.note}`);
 
   // axes breakdown
   lines.push('');
@@ -1395,7 +1442,7 @@ function buildHumanBody(cat,payload,scoreText,rec){
 function buildReviewPayload(){
   const cat=curCat, ax=cat.axes;
   const ts=new Date().toISOString();
-  let payload={cat:cat.id,mode:cat.mode,scale:SCALE,axes:{...scores},ts,item:curItem||null,note:null};
+  let payload={cat:cat.id,mode:cat.mode,scale:SCALE,axes:{...scores},ts,item:curItem||null,note:(cat.useNote&&curNote)?curNote:null};
   if(cat.stars) payload.stars=curStars;
   if(cat.useLocation && curLocation) payload.location=curLocation;
   if(cat.mode==='review'){
@@ -1427,6 +1474,7 @@ function recordCurrentReview(cat,payload,scoreText){
     intensity:payload.intensity, harmony:payload.harmony,
     curStars:payload.stars||null,
     location:payload.location||null,
+    note:payload.note||null,
     photoDataUrl:null
   };
   currentReviewId=rec.id;
@@ -2763,6 +2811,14 @@ function viewSavedReview(id){
   }
   else locEl.textContent='';
 
+  const noteEl=document.getElementById('view-note');
+  if(rec.note){
+    noteEl.style.display='block';
+    noteEl.textContent=rec.note;
+  } else {
+    noteEl.style.display='none';
+  }
+
   const bars=document.getElementById('view-bars');
   bars.innerHTML='';
   rec.axes.forEach(a=>{
@@ -2842,14 +2898,15 @@ function dataUrlToFile(dataUrl,filename){
 async function withViewRecord(fn){
   const rec=savedReviews.find(r=>r.id===viewingReviewId);
   if(!rec) return;
-  const prevCat=curCat,prevScores=scores,prevItem=curItem,prevStars=curStars,prevPhoto=attachedPhoto;
-  curCat={id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:rec.axes,stars:rec.stars,useLocation:!!rec.location};
+  const prevCat=curCat,prevScores=scores,prevItem=curItem,prevStars=curStars,prevPhoto=attachedPhoto,prevNote=curNote;
+  curCat={id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:rec.axes,stars:rec.stars,useLocation:!!rec.location,useNote:!!rec.note};
   scores={...rec.scores};
   curItem=rec.item||'';
   curStars=rec.curStars||3;
+  curNote=rec.note||'';
   attachedPhoto=rec.photoDataUrl?dataUrlToFile(rec.photoDataUrl,'photo.jpg'):null;
   try{ await fn(rec); }
-  finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhoto=prevPhoto; }
+  finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhoto=prevPhoto; curNote=prevNote; }
 }
 
 async function shareViewedReview(btn){
@@ -2868,13 +2925,13 @@ async function shareViewedReview(btn){
         if(err.name==='AbortError') return;
         btnFeedback(btn,'share unavailable','#57544C','#E8E6DE',2000);
       }
-      const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
+      const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
       if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
       downloadBlob(new Blob([msg],{type:'text/plain'}),`review_radar_${cat.id}_${stamp}_payload.txt`);
       return;
     }
 
-    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
+    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
     if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
     downloadBlob(new Blob([msg],{type:'text/plain'}),`review_radar_${cat.id}_${stamp}_payload.txt`);
     btnFeedback(btn,'files downloaded','#57544C','#E8E6DE',2500);
@@ -2885,7 +2942,7 @@ async function emailViewedReview(btn){
   withViewRecord(async rec=>{
     const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
     const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
-    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null);
+    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
     if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
     const payloadBlob=new Blob([msg],{type:'text/plain'});
     downloadBlob(payloadBlob,`review_radar_${cat.id}_${stamp}_payload.txt`);
@@ -2914,7 +2971,7 @@ function queuePayload(msg){
   }catch(e){}
 }
 
-async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,starsVal,mapImageDataUrl){
+async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,starsVal,mapImageDataUrl,noteText){
   const W=600,PAD=28,FONT='Special Elite',BG='#141412',AMBER='#F2A623';
   const SEC='#8B8880',MUT='#57544C',GRN='#97C459',RED='#E24B4A',TXT='#E8E6DE';
   let photoImg=null;
@@ -2942,8 +2999,8 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
   const STATS_H=starsVal?114:64;
   const PHOTO_H=photoImg?Math.min(340,Math.round(photoImg.height*(RADAR_W/photoImg.width)))+16:0;
   const MAP_H=mapImg?Math.min(200,Math.round(mapImg.height*(RADAR_W/mapImg.width)))+16:0;
-  const QUOTE_H=quoteText?72:0, LOC_H=location?48:0;
-  const totalH=PAD+34+16+bars_section+12+RADAR_H+16+STATS_H+QUOTE_H+PHOTO_H+MAP_H+LOC_H+PAD;
+  const QUOTE_H=quoteText?72:0, LOC_H=location?48:0, NOTE_H=noteText?160:0;
+  const totalH=PAD+34+16+bars_section+12+RADAR_H+16+STATS_H+QUOTE_H+NOTE_H+PHOTO_H+MAP_H+LOC_H+PAD;
   const canvas=document.createElement('canvas');
   canvas.width=W; canvas.height=totalH;
   const ctx=canvas.getContext('2d');
@@ -2998,6 +3055,13 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
   if(quoteText){
     ctx.font=`italic 14px '${FONT}',monospace`; ctx.fillStyle=SEC; ctx.textAlign='center';
     y+=wrapTextH(ctx,`"${quoteText}"`,PAD,y,W-PAD*2,22)+16;
+  }
+  if(noteText){
+    ctx.font=`bold 11px '${FONT}',monospace`; ctx.fillStyle=MUT; ctx.textAlign='center';
+    ctx.fillText('note',W/2,y+10);
+    y+=20;
+    ctx.font=`13px '${FONT}',monospace`; ctx.fillStyle=TXT; ctx.textAlign='center';
+    y+=wrapTextH(ctx,noteText,PAD,y,W-PAD*2,19)+16;
   }
   if(photoImg){
     const dw=RADAR_W, dh=Math.min(340,Math.round(photoImg.height*(dw/photoImg.width)));
@@ -3164,7 +3228,7 @@ async function emailReview(btn){
 async function saveReviewImage(btn){
   const {cat,payload,scoreText,summary,ts}=buildReviewPayload();
   const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
-  const result=await generateReviewFile(cat,scoreText,attachedPhoto,curLocation,document.getElementById('conf-quote')?.textContent||null,cat.stars?curStars:null,curMapSnapshot);
+  const result=await generateReviewFile(cat,scoreText,attachedPhoto,curLocation,document.getElementById('conf-quote')?.textContent||null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
   if(result){
     downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
     btnFeedback(btn,`\u2713 saved as ${result.ext.toUpperCase()}!`,'#97C459','#1a2e0a',2500);
@@ -3206,6 +3270,7 @@ let newMode='review';
 let newAxes=[];
 let newStars=true;
 let newLocation=false;
+let newNote=false;
 function toggleNewCatStars(){
   newStars=!newStars;
   document.getElementById('new-cat-stars-box').classList.toggle('on',newStars);
@@ -3215,6 +3280,10 @@ function toggleNewCatStars(){
 function toggleNewCatLocation(){
   newLocation=!newLocation;
   document.getElementById('new-cat-location-box').classList.toggle('on',newLocation);
+}
+function toggleNewCatNote(){
+  newNote=!newNote;
+  document.getElementById('new-cat-note-box').classList.toggle('on',newNote);
 }
 function starIcon(i,lit,size,onClickPrefix){
   const click=onClickPrefix?` onclick="${onClickPrefix}(${i})" class="star-icon"`:'';
@@ -3415,12 +3484,13 @@ function saveNewCat(){
     return;
   }
 
-  const cat={id:name,label:name,mode:newMode,axes:[...newAxes],stars:newStars,useLocation:newLocation};
+  const cat={id:name,label:name,mode:newMode,axes:[...newAxes],stars:newStars,useLocation:newLocation,useNote:newNote};
   if(newMode==='profile') cat.showHarmony=true;
   registry.push(cat);
   saveRegistry(registry);
-  newAxes=[]; newMode='review'; newStars=true; newLocation=false;
+  newAxes=[]; newMode='review'; newStars=true; newLocation=false; newNote=false;
   document.getElementById('new-cat-location-box').classList.remove('on');
+  document.getElementById('new-cat-note-box').classList.remove('on');
   document.getElementById('new-cat-name').textContent='';
   document.getElementById('new-cat-stars-box').classList.add('on');
   setMode('review');
