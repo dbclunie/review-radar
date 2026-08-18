@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.44</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.45</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -438,6 +438,18 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div id="restore-status" style="font-size:0.72em;margin-top:8px;min-height:1.2em;text-align:center"></div>
     <div tabindex="0" id="restore-confirm-btn" style="display:none;background:#E24B4A;border-radius:6px;text-align:center;padding:10px;color:#fff;font-size:0.85em;font-weight:bold;margin-top:8px;cursor:pointer" onclick="confirmRestore()">restore this backup</div>
 
+    <div style="height:10px"></div>
+
+    <div tabindex="0" style="display:flex;align-items:center;gap:10px;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:10px;cursor:pointer" onclick="triggerImportReviewPick()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A8A49E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+      <div>
+        <div style="color:#E8E6DE;font-size:0.85em">import a shared review</div>
+        <div style="color:#7A7670;font-size:0.68em">select a _payload.txt file</div>
+      </div>
+    </div>
+    <input type="file" id="import-review-file-input" accept="text/plain,.txt" style="display:none" onchange="handleImportReviewFile(event)">
+    <div id="import-review-status" style="font-size:0.72em;margin-top:8px;min-height:1.2em;text-align:center"></div>
+
     <div tabindex="0" style="text-align:center;padding:10px;color:#7A7670;font-size:0.8em;margin-top:14px;cursor:pointer" onclick="closeBackupModal()">close</div>
   </div>
 </div>
@@ -568,6 +580,79 @@ function confirmRestore(){
   );
 }
 
+// ── IMPORT A SINGLE REVIEW FROM A SHARED PAYLOAD .txt FILE ──────────────
+function triggerImportReviewPick(){
+  document.getElementById('import-review-file-input').click();
+}
+
+function capitalizeWords(str){
+  return str.replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+function handleImportReviewFile(e){
+  const f=e.target.files[0];
+  if(!f) return;
+  const statusEl=document.getElementById('import-review-status');
+  const reader=new FileReader();
+  reader.onload=()=>{
+    document.getElementById('import-review-file-input').value='';
+    const text=reader.result;
+    const match=text.match(/\u27EBRVW v1\.4\u27EC([\s\S]*?)\u27EB\/RVW\u27EC/);
+    if(!match){
+      statusEl.style.color='#E24B4A';
+      statusEl.textContent='\u26a0 not a valid Review Radar payload file';
+      return;
+    }
+    let payload;
+    try{ payload=JSON.parse(match[1]); }
+    catch(err){
+      statusEl.style.color='#E24B4A';
+      statusEl.textContent='\u26a0 payload could not be read \u2014 file may be corrupted';
+      return;
+    }
+    if(!payload.cat || !payload.mode || !payload.axes || !payload.ts){
+      statusEl.style.color='#E24B4A';
+      statusEl.textContent='\u26a0 payload is missing required fields';
+      return;
+    }
+    if(savedReviews.find(r=>r.id===payload.ts)){
+      statusEl.style.color='#c58a1e';
+      statusEl.textContent='\u26a0 this review is already in your saved list';
+      return;
+    }
+
+    const liveCat=registry.find(c=>c.id===payload.cat);
+    const catLabel=liveCat?liveCat.label:capitalizeWords(payload.cat);
+    const axesList=Object.keys(payload.axes);
+    const scoreText=payload.mode==='review'
+      ? `${payload.total}/${payload.max} \u00b7 ${payload.grade}`
+      : `intensity ${payload.intensity} \u00b7 harmony ${payload.harmony}`;
+
+    const rec={
+      id:payload.ts, ts:payload.ts,
+      catId:payload.cat, catLabel, mode:payload.mode, axes:axesList, stars:payload.stars!==undefined,
+      scores:{...payload.axes}, item:payload.item||null, scoreText,
+      total:payload.total, max:payload.max, grade:payload.grade,
+      intensity:payload.intensity, harmony:payload.harmony,
+      curStars:payload.stars||null,
+      location:payload.location||null,
+      photoDataUrl:null
+    };
+    savedReviews.unshift(rec);
+    saveSavedReviews(savedReviews);
+    renderSavedReviewsList();
+    evaluateAchievements();
+
+    statusEl.style.color='#97C459';
+    statusEl.textContent=`\u2713 imported "${rec.item||catLabel}"`;
+  };
+  reader.onerror=()=>{
+    statusEl.style.color='#E24B4A';
+    statusEl.textContent='\u26a0 could not read that file';
+  };
+  reader.readAsText(f);
+}
+
 function openBackupModal(){
   document.getElementById('backup-modal').style.display='flex';
 }
@@ -577,6 +662,8 @@ function closeBackupModal(){
   document.getElementById('restore-status').textContent='';
   document.getElementById('restore-confirm-btn').style.display='none';
   document.getElementById('restore-file-input').value='';
+  document.getElementById('import-review-status').textContent='';
+  document.getElementById('import-review-file-input').value='';
 }
 
 // ── GRADE BANDS ───────────────────────────────────────────────────────────
