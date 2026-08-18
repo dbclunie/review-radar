@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.43</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.44</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -363,6 +363,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
   <div style="display:flex;gap:8px;margin-top:8px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-cat')">back</div>
+    <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#F2A623" onclick="editSavedReview(viewingReviewId)">edit</div>
     <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#E24B4A" onclick="showConfirmModal('Delete this review? This cannot be undone.',()=>deleteSavedReview(viewingReviewId))">delete</div>
   </div>
 </div>
@@ -830,11 +831,68 @@ function pickCat(cat){
   locationPending=false;
   currentReviewSaved=false;
   currentReviewId=null;
+  editingReviewId=null;
   document.getElementById('hdr-item-cat').textContent=cat.label.toUpperCase();
   document.getElementById('item-screen-label').textContent=`add a ${cat.label} review`;
   document.getElementById('hdr-item-live').textContent='';
   document.getElementById('item-input').textContent='';
   showScreen('s-item');
+}
+
+// ── EDIT AN EXISTING SAVED REVIEW ───────────────────────────────────────
+let editingReviewId=null;
+
+function editSavedReview(id){
+  const rec=savedReviews.find(r=>r.id===id);
+  if(!rec) return;
+
+  // Prefer the live category (picks up any renamed axes/labels); fall back to the
+  // record's own snapshot if the category itself was deleted since this review was made.
+  const liveCat=registry.find(c=>c.id===rec.catId);
+  curCat=liveCat||{id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:[...rec.axes],stars:rec.stars,useLocation:!!rec.location};
+
+  scores={};
+  curCat.axes.forEach(a=>{ scores[a]=(rec.scores&&rec.scores[a]!==undefined)?rec.scores[a]:0; });
+
+  curItem=rec.item||'';
+  curStars=rec.curStars||3;
+  curLocation=rec.location?{...rec.location}:null;
+  curMapSnapshot=null;
+  attachedPhoto=rec.photoDataUrl?dataUrlToFile(rec.photoDataUrl,'photo.jpg'):null;
+  locationPending=false;
+  currentReviewSaved=false;
+  currentReviewId=null;
+  editingReviewId=rec.id;
+  confirmedAxes=new Set(curCat.axes.map((_,i)=>i)); // existing values already confirmed, dial won't force re-cycling zeros
+
+  document.getElementById('hdr-item-cat').textContent=curCat.label.toUpperCase();
+  document.getElementById('item-screen-label').textContent=`edit this ${curCat.label} review`;
+  document.getElementById('hdr-item-live').textContent=curItem;
+  document.getElementById('item-input').textContent=curItem;
+
+  dialIdx=0;
+  showScreen('s-item');
+}
+
+// Updates the existing record in place instead of creating a new one — used when editingReviewId is set.
+function updateExistingReview(cat,payload,scoreText){
+  const rec=savedReviews.find(r=>r.id===editingReviewId);
+  if(!rec) return;
+  rec.catId=cat.id; rec.catLabel=cat.label; rec.mode=cat.mode; rec.axes=[...cat.axes]; rec.stars=!!cat.stars;
+  rec.scores={...payload.axes}; rec.item=payload.item; rec.scoreText=scoreText;
+  rec.total=payload.total; rec.max=payload.max; rec.grade=payload.grade;
+  rec.intensity=payload.intensity; rec.harmony=payload.harmony;
+  rec.curStars=payload.stars||null;
+  rec.location=payload.location||null;
+  currentReviewId=rec.id;
+  saveSavedReviews(savedReviews);
+  renderSavedReviewsList();
+  evaluateAchievements(); // scores may have changed grade/star counts — re-check, but no streak/volume bump
+  if(attachedPhoto){
+    const reader=new FileReader();
+    reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
+    reader.readAsDataURL(attachedPhoto);
+  }
 }
 
 // ── SCREEN 3: ITEM NAME ───────────────────────────────────────────────────
@@ -984,7 +1042,11 @@ function renderConfirm(){
 
   // Auto-save immediately so it appears in the list regardless of share/back
   const {payload:ap,scoreText:ast}=buildReviewPayload();
-  recordCurrentReview(cat,ap,ast);
+  if(editingReviewId){
+    updateExistingReview(cat,ap,ast);
+  } else {
+    recordCurrentReview(cat,ap,ast);
+  }
 
   dialIdx=0;
   showScreen('s-confirm');
@@ -2867,7 +2929,7 @@ function confirmModalYes(){
   if(cb) cb();
 }
 
-function reset(){ curCat=null; scores={}; dialIdx=0; curItem=''; preGeneratedFile=null; preGeneratedMsg=null; preGeneratedStamp=null; removeAttachedPhoto(); closeCatDD(); renderCatSelect(); showScreen('s-cat'); }
+function reset(){ curCat=null; scores={}; dialIdx=0; curItem=''; editingReviewId=null; preGeneratedFile=null; preGeneratedMsg=null; preGeneratedStamp=null; removeAttachedPhoto(); closeCatDD(); renderCatSelect(); showScreen('s-cat'); }
 
 // ── ADD CATEGORY ──────────────────────────────────────────────────────────
 let newMode='review';
