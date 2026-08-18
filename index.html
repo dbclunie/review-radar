@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.36</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.37</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -1765,40 +1765,57 @@ function hideGestureOverlay(){
 }
 
 // Rotation-invariant 5-point-star detector: works starting from any point, any direction.
-// A one-stroke star has ~5 sharp corners and several self-intersections, and roughly closes back near its start.
-function detectStarGesture(points){
-  // 1. resample to reduce touch jitter noise
-  const resampled=resamplePath(points,8);
-  if(resampled.length<10) return false;
+// Robust to real finger jitter — smooths first, then detects corners via net direction
+// change over a small window (which cancels symmetric noise) rather than accumulated
+// absolute angle (which falsely accumulates from hand tremor alone).
+function detectStarGesture(rawPoints){
+  if(rawPoints.length<15) return false;
+  const smoothed=smoothPath(rawPoints,3);
+  const resampled=resamplePath(smoothed,18);
+  if(resampled.length<8) return false;
 
-  // 2. find corners via cumulative turn-angle since last corner
   const corners=[resampled[0]];
-  let cumAngle=0;
-  for(let i=1;i<resampled.length-1;i++){
-    const a=angleBetween(resampled[i-1],resampled[i],resampled[i+1]);
-    cumAngle+=Math.abs(a);
-    if(cumAngle>55*Math.PI/180){ corners.push(resampled[i]); cumAngle=0; }
+  const winSize=2;
+  let i=winSize;
+  while(i<resampled.length-winSize){
+    const before=resampled[i-winSize], at=resampled[i], after=resampled[i+winSize];
+    const a=angleBetween(before,at,after);
+    if(Math.abs(a)>50*Math.PI/180){
+      corners.push(at);
+      i+=winSize;
+    } else {
+      i++;
+    }
   }
   corners.push(resampled[resampled.length-1]);
   if(corners.length<4 || corners.length>8) return false;
 
-  // 3. count self-intersections among the corner-to-corner segments (a star crosses itself repeatedly)
   let crossings=0;
-  for(let i=0;i<corners.length-1;i++){
-    for(let j=i+2;j<corners.length-1;j++){
-      if(i===0 && j===corners.length-2) continue; // skip the closing segment vs first (adjacent when path closes)
-      if(segmentsIntersect(corners[i],corners[i+1],corners[j],corners[j+1])) crossings++;
+  for(let a=0;a<corners.length-1;a++){
+    for(let b=a+2;b<corners.length-1;b++){
+      if(a===0 && b===corners.length-2) continue;
+      if(segmentsIntersect(corners[a],corners[a+1],corners[b],corners[b+1])) crossings++;
     }
   }
   if(crossings<3) return false;
 
-  // 4. path should roughly return near where it started (closing the star)
   const start=resampled[0], end=resampled[resampled.length-1];
   const bbox=boundingBoxDiagonal(resampled);
   const closeDist=Math.hypot(end.x-start.x,end.y-start.y);
-  if(closeDist>bbox*0.45) return false;
+  if(closeDist>bbox*0.5) return false;
 
   return true;
+}
+function smoothPath(points,windowSize){
+  const out=[];
+  for(let i=0;i<points.length;i++){
+    let sx=0,sy=0,n=0;
+    for(let j=Math.max(0,i-windowSize);j<=Math.min(points.length-1,i+windowSize);j++){
+      sx+=points[j].x; sy+=points[j].y; n++;
+    }
+    out.push({x:sx/n,y:sy/n});
+  }
+  return out;
 }
 function resamplePath(points,step){
   const out=[points[0]];
