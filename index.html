@@ -80,7 +80,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .divider{border-top:0.5px solid #33312C;margin:8px 0;flex-shrink:0}
 
 /* add-category form */
-.mode-example-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:5px;max-width:min(260px,80%);margin-left:auto;margin-right:auto}
+.mode-example-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;width:100%}
 .star-toggle-row{display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:6px;font-size:0.75em;color:#A8A49E;user-select:none}
 .star-toggle-box{width:0.9em;height:0.9em;border-radius:2px;border:1px solid #3A3833;background:#26241F;flex-shrink:0;position:relative}
 .star-toggle-box.on{background:#F2A623;border-color:#F2A623}
@@ -92,9 +92,9 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .star-compact .star-icon:first-child{margin-left:0}
 .star-compact .star-stack{gap:0}
 .star-icon{cursor:pointer}
-.mode-example{background:#1E1C18;border:0.5px solid #33312C;border-radius:8px;padding:4px 5px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s;min-width:0;font-size:clamp(0.6em,2.2vw,0.72em)}
-.mode-example.sel{border-color:#F2A623}
-.mode-example.unsel{opacity:0.5}
+.mode-example{background:#1E1C18;border:0.5px solid #33312C;border-radius:8px;padding:8px 8px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s;min-width:0;font-size:clamp(0.72em,3vw,0.9em)}
+.mode-example.sel{border-color:#F2A623;border-width:1.5px;box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
+.mode-example.unsel{opacity:0.8}
 .field-label{font-size:0.85em;color:#A8A49E;margin-bottom:4px}
 .field-input{width:100%;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;color:#E8E6DE;font-family:'Special Elite',monospace;font-size:1em;padding:10px 9px 6px 9px;outline:none;box-sizing:border-box}
 #new-cat-name{font-size:1.125em;font-weight:bold;line-height:1.5;padding-top:20px !important;padding-bottom:12px !important;min-height:3.5em}
@@ -161,7 +161,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.52</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.53</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -196,26 +196,25 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </div>
     <div id="cat-name-hint" style="font-size:0.68em;margin-top:2px;min-height:0.7em"></div>
 
-    <div class="field-label" style="margin-top:4px;margin-bottom:2px">scoring type</div>
-    <div style="display:flex;gap:6px;margin-bottom:5px">
-      <div tabindex="0" class="btn" id="mode-profile" onclick="setMode('profile')" style="flex:1;text-align:center;padding:4px 10px">character</div>
-      <div tabindex="0" class="btn" id="mode-review" onclick="setMode('review')" style="flex:1;text-align:center;padding:4px 10px">score</div>
-    </div>
+    <div class="field-label" style="margin-top:5px;margin-bottom:3px;text-align:center">tap to choose scoring type</div>
     <div class="mode-example-grid">
       <div id="mode-example-profile" class="mode-example" onclick="setMode('profile')" style="cursor:pointer"></div>
       <div id="mode-example-review" class="mode-example" onclick="setMode('review')" style="cursor:pointer"></div>
     </div>
-    <div class="star-toggle-row" onclick="toggleNewCatStars()" style="justify-content:center;margin-bottom:4px">
-      <div class="star-toggle-box on" id="new-cat-stars-box"></div>
-      <span>include 1–5 star rating (either type)</span>
-    </div>
-    <div class="star-toggle-row" onclick="toggleNewCatLocation()" style="justify-content:center;margin-bottom:4px">
-      <div class="star-toggle-box" id="new-cat-location-box"></div>
-      <span>use location (either type)</span>
-    </div>
-    <div class="star-toggle-row" onclick="toggleNewCatNote()" style="justify-content:center;margin-bottom:0">
-      <div class="star-toggle-box" id="new-cat-note-box"></div>
-      <span>add a personal note field</span>
+
+    <div style="display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;margin-top:6px">
+      <div class="star-toggle-row" onclick="toggleNewCatStars()" style="margin-bottom:0">
+        <div class="star-toggle-box on" id="new-cat-stars-box"></div>
+        <span>1–5 stars</span>
+      </div>
+      <div class="star-toggle-row" onclick="toggleNewCatLocation()" style="margin-bottom:0">
+        <div class="star-toggle-box" id="new-cat-location-box"></div>
+        <span>location</span>
+      </div>
+      <div class="star-toggle-row" onclick="toggleNewCatNote()" style="margin-bottom:0">
+        <div class="star-toggle-box" id="new-cat-note-box"></div>
+        <span>note field</span>
+      </div>
     </div>
   </div>
   <div style="flex-shrink:0">
@@ -3324,10 +3323,6 @@ const AXIS_EXAMPLES={
 };
 function setMode(m){
   newMode=m;
-  document.getElementById('mode-profile').style.background=m==='profile'?'#F2A623':'#26241F';
-  document.getElementById('mode-profile').style.color=m==='profile'?'#412402':'#E8E6DE';
-  document.getElementById('mode-review').style.background=m==='review'?'#F2A623':'#26241F';
-  document.getElementById('mode-review').style.color=m==='review'?'#412402':'#E8E6DE';
   updateModeHighlight(m);
   const word=PLACEHOLDER_WORDS[m][Math.floor(Math.random()*PLACEHOLDER_WORDS[m].length)];
   document.getElementById('new-axis-input').dataset.placeholder='e.g. '+word;
