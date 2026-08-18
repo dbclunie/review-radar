@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.40</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.41</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -379,8 +379,9 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 <!-- SECRET ACHIEVEMENTS PAGE (opened only via drawing a 5-point star gesture on the calendar) -->
 <div id="sc-gesture-overlay" style="position:fixed;inset:0;z-index:185;pointer-events:none;display:none"></div>
 <div id="achievements-list-page" style="display:none;position:fixed;inset:0;background:#141412;z-index:190;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Special Elite',monospace">
-  <div style="display:flex;align-items:center;justify-content:center;margin-bottom:18px;flex-shrink:0">
+  <div style="text-align:center;margin-bottom:18px;flex-shrink:0">
     <div style="color:#FFE8B0;font-size:0.95em;font-weight:bold;letter-spacing:1px">achievements</div>
+    <div id="achievements-progress" style="color:#A8A49E;font-size:0.72em;margin-top:4px"></div>
   </div>
   <div id="achievements-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
   <div class="btn-row" style="flex-shrink:0;padding-top:10px">
@@ -1868,6 +1869,8 @@ function boundingBoxDiagonal(points){
 
 function renderAchievementsList(){
   const listEl=document.getElementById('achievements-list');
+  const progressEl=document.getElementById('achievements-progress');
+  if(progressEl) progressEl.textContent=`(${achievements.length} out of ${ACHIEVEMENT_DEFS.length})`;
   if(!achievements.length){
     listEl.innerHTML=`<div style="text-align:center;color:#5f4419;font-size:0.85em;margin-top:60px;line-height:1.6">nothing unlocked yet.<br>keep reviewing — a full month<br>of daily reviews unlocks your first one.</div>`;
     return;
