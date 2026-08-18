@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.49</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.50</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -329,17 +329,17 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
 <!-- SCREEN 5: confirm -->
 <div class="screen" id="s-confirm">
-  <div class="hdr"><span id="hdr-conf-cat"></span><span id="hdr-conf-mode"></span></div>
-  <div id="conf-bars" style="margin-bottom:4px"></div>
-  <div class="divider"></div>
-  <div id="conf-radar" style="margin:4px 0"></div>
-  <div class="divider"></div>
+  <div class="hdr" style="margin-bottom:4px"><span id="hdr-conf-cat"></span><span id="hdr-conf-mode"></span></div>
+  <div id="conf-bars" style="margin-bottom:2px"></div>
+  <div class="divider" style="margin:4px 0"></div>
+  <div id="conf-radar" style="margin:2px auto;max-height:150px;max-width:200px;overflow:hidden"></div>
+  <div class="divider" style="margin:4px 0"></div>
   <div id="conf-result"></div>
-  <div id="conf-quote" style="font-size:0.75em;color:#A8A49E;line-height:1.5;font-style:italic;text-align:center;margin-top:10px"></div>
-  <div id="conf-location" style="font-size:0.7em;color:#7A7670;text-align:center;margin-top:4px"></div>
-  <div id="conf-map-preview" style="display:none;height:120px;border-radius:6px;overflow:hidden;margin-top:6px;border:0.5px solid #33312C"></div>
+  <div id="conf-quote" style="font-size:0.72em;color:#A8A49E;line-height:1.4;font-style:italic;text-align:center;margin-top:4px"></div>
+  <div id="conf-location" style="font-size:0.68em;color:#7A7670;text-align:center;margin-top:2px"></div>
+  <div id="conf-map-preview" style="display:none;height:100px;border-radius:6px;overflow:hidden;margin-top:4px;border:0.5px solid #33312C"></div>
 
-  <div style="display:flex;gap:8px;margin-top:10px">
+  <div style="display:flex;gap:8px;margin-top:6px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('photo-input-camera').click()">take photo</div>
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('photo-input-gallery').click()">from gallery</div>
   </div>
@@ -347,12 +347,12 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <input type="file" id="photo-input-gallery" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
   <div id="attach-preview"></div>
 
-  <div style="display:flex;gap:8px;margin-top:8px">
-    <button class="send-btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px" onclick="shareReview(this)">
+  <div style="display:flex;gap:8px;margin-top:6px;flex-shrink:0">
+    <button class="send-btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:0;padding:8px" onclick="shareReview(this)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#412402" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
       share
     </button>
-    <button class="send-btn" style="flex:1;background:#26241F;color:#E8E6DE;display:flex;align-items:center;justify-content:center" onclick="renderCatSelect();showScreen('s-cat')">back to home</button>
+    <button class="send-btn" style="flex:1;background:#26241F;color:#E8E6DE;display:flex;align-items:center;justify-content:center;margin-top:0;padding:8px" onclick="renderCatSelect();showScreen('s-cat')">back to home</button>
   </div>
 </div>
 
@@ -1134,7 +1134,7 @@ function renderConfirm(){
     html+=starMid;
     html+=`<div class="grade-box" style="border:1.5px solid ${gr.col}"><div class="grade-letter" style="color:${gr.col}">${gr.g}</div><div class="grade-range">${gr.range}</div></div>`;
     html+=`</div>`;
-    html+=`<div style="font-size:10px;color:#7A7670;margin-top:4px;text-align:center">S=25 · A=20–24 · B=15–19 · C=10–14 · D=5–9 · F=0–4</div>`;
+    html+=`<div style="font-size:8.5px;color:#7A7670;margin-top:2px;text-align:center">S=25 · A=20–24 · B=15–19 · C=10–14 · D=5–9 · F=0–4</div>`;
     res.innerHTML=html;
   } else {
     const vals=ax.map(a=>scores[a]||0);
