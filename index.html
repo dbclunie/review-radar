@@ -160,7 +160,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.48</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.49</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -2676,12 +2676,15 @@ function openCompareView(idA,idB){
   const tableEl=document.getElementById('compare-axes-table');
   tableEl.innerHTML=axes.map(a=>{
     const va=recA.scores[a]||0, vb=(recB.scores&&recB.scores[a])||0;
-    const aColor=va>vb?'#F2A623':'#7A7670';
-    const bColor=vb>va?'#E8E6DE':'#7A7670';
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:0.5px solid #26241F;font-size:0.85em">
-      <span style="color:${aColor};width:24px;text-align:center;font-weight:${va>vb?'bold':'normal'}">${va}</span>
-      <span style="flex:1;text-align:center;color:#A8A49E">${a}</span>
-      <span style="color:${bColor};width:24px;text-align:center;font-weight:${vb>va?'bold':'normal'}">${vb}</span>
+    const pctA=(va/SCALE)*100, pctB=(vb/SCALE)*100;
+    return `<div style="display:flex;align-items:center;gap:6px;padding:7px 0">
+      <span style="width:18px;flex-shrink:0;text-align:right;color:#F2A623;font-size:0.78em;font-weight:bold">${va}</span>
+      <div style="position:relative;flex:1;height:22px">
+        <div style="position:absolute;top:0;right:50%;height:100%;width:${pctA/2}%;background:#F2A623;opacity:0.55;border-radius:3px 0 0 3px"></div>
+        <div style="position:absolute;top:0;left:50%;height:100%;width:${pctB/2}%;background:#E8E6DE;opacity:0.55;border-radius:0 3px 3px 0"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#141412;padding:1px 8px;border-radius:4px;white-space:nowrap;font-size:0.72em;color:#E8E6DE;z-index:1">${a}</div>
+      </div>
+      <span style="width:18px;flex-shrink:0;text-align:left;color:#E8E6DE;font-size:0.78em;font-weight:bold">${vb}</span>
     </div>`;
   }).join('');
 
