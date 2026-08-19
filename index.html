@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.65</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.66</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -3204,6 +3204,46 @@ async function generateReviewFileSafe(...args){
     console.error('Review Radar: image generation threw an error —',e);
     return null;
   }
+}
+
+// Draws a rounded-rect PATH (caller still does fill()/stroke()). Uses the native
+// ctx.roundRect() where available, with a manual arcTo-based fallback for older
+// browsers/WebViews that don't support it — this was previously called but never
+// defined at all, which crashed every single share-image generation attempt.
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  if(typeof ctx.roundRect==='function'){
+    ctx.roundRect(x,y,w,h,r);
+    return;
+  }
+  const rr=Math.min(r,w/2,h/2);
+  ctx.moveTo(x+rr,y);
+  ctx.lineTo(x+w-rr,y);
+  ctx.arcTo(x+w,y,x+w,y+rr,rr);
+  ctx.lineTo(x+w,y+h-rr);
+  ctx.arcTo(x+w,y+h,x+w-rr,y+h,rr);
+  ctx.lineTo(x+rr,y+h);
+  ctx.arcTo(x,y+h,x,y+h-rr,rr);
+  ctx.lineTo(x,y+rr);
+  ctx.arcTo(x,y,x+rr,y,rr);
+}
+
+// Draws a 5-point star PATH (caller does fill()/stroke()) — also called but never
+// defined, masked until now because roundRect crashed earlier in the same function
+// on every run, before execution ever reached this line.
+function starPath(ctx,cx,cy,r){
+  ctx.beginPath();
+  const spikes=5, outerR=r, innerR=r*0.4;
+  let rot=Math.PI/2*3;
+  const step=Math.PI/spikes;
+  ctx.moveTo(cx,cy-outerR);
+  for(let i=0;i<spikes;i++){
+    ctx.lineTo(cx+Math.cos(rot)*outerR,cy+Math.sin(rot)*outerR);
+    rot+=step;
+    ctx.lineTo(cx+Math.cos(rot)*innerR,cy+Math.sin(rot)*innerR);
+    rot+=step;
+  }
+  ctx.closePath();
 }
 
 async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,starsVal,mapImageDataUrl,noteText){
