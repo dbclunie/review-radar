@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.68</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.69</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -394,8 +394,8 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('photo-input-gallery').click()">from gallery</div>
   </div>
   <input type="file" id="photo-input-camera" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
-  <input type="file" id="photo-input-gallery" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
-  <div id="attach-preview"></div>
+  <input type="file" id="photo-input-gallery" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event)">
+  <div id="attach-preview" style="display:flex;gap:6px;overflow-x:auto;margin-top:6px;max-height:44px"></div>
 
   <div style="display:flex;gap:8px;margin-top:6px;flex-shrink:0">
     <button class="send-btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:0;padding:8px" onclick="shareReview(this)">
@@ -1012,6 +1012,7 @@ function pickCat(cat){
   curLocation=null;
   curMapSnapshot=null;
   curNote='';
+  attachedPhotos=[];
   locationPending=false;
   currentReviewSaved=false;
   currentReviewId=null;
@@ -1044,7 +1045,7 @@ function editSavedReview(id){
   curLocation=rec.location?{...rec.location}:null;
   curMapSnapshot=null;
   curNote=rec.note||'';
-  attachedPhoto=rec.photoDataUrl?dataUrlToFile(rec.photoDataUrl,'photo.jpg'):null;
+  attachedPhotos=rec.photoDataUrl?[dataUrlToFile(rec.photoDataUrl,'photo.jpg')]:[];
   locationPending=false;
   currentReviewSaved=false;
   currentReviewId=null;
@@ -1075,10 +1076,10 @@ function updateExistingReview(cat,payload,scoreText){
   saveSavedReviews(savedReviews);
   renderSavedReviewsList();
   evaluateAchievements(); // scores may have changed grade/star counts — re-check, but no streak/volume bump
-  if(attachedPhoto){
+  if(attachedPhotos.length){
     const reader=new FileReader();
     reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
-    reader.readAsDataURL(attachedPhoto);
+    reader.readAsDataURL(attachedPhotos[0]);
   }
 }
 
@@ -1200,6 +1201,7 @@ function renderConfirm(){
   const cat=curCat, ax=cat.axes;
   document.getElementById('hdr-conf-cat').textContent=cat.label.toUpperCase();
   document.getElementById('hdr-conf-mode').textContent=curItem||'';
+  renderAttachPreview();
 
   const noteWrap=document.getElementById('conf-note-wrap');
   if(cat.useNote){
@@ -1295,7 +1297,7 @@ async function preGenerateShareFile(){
   preGeneratedPayload=payload;
   preGeneratedStamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
   const quoteEl=document.getElementById('conf-quote');
-  preGeneratedFile=await generateReviewFile(cat,scoreText,attachedPhoto,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
+  preGeneratedFile=await generateReviewFile(cat,scoreText,attachedPhotos[0]||null,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
   preGenerating=false;
 }
 function setConfirmStars(n){
@@ -1616,10 +1618,10 @@ function recordCurrentReview(cat,payload,scoreText){
     setTimeout(()=>showBackupNudge(`you\u2019ve got ${savedReviews.length} reviews saved now \u2014 a great time to back up.`),1000);
   }
   // Photo may already be attached if user picked it before this fired
-  if(attachedPhoto){
+  if(attachedPhotos.length){
     const reader=new FileReader();
     reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
-    reader.readAsDataURL(attachedPhoto);
+    reader.readAsDataURL(attachedPhotos[0]);
   }
 }
 
@@ -3101,16 +3103,16 @@ function dataUrlToFile(dataUrl,filename){
 async function withViewRecord(fn){
   const rec=savedReviews.find(r=>r.id===viewingReviewId);
   if(!rec) return;
-  const prevCat=curCat,prevScores=scores,prevItem=curItem,prevStars=curStars,prevPhoto=attachedPhoto,prevNote=curNote,prevLocation=curLocation;
+  const prevCat=curCat,prevScores=scores,prevItem=curItem,prevStars=curStars,prevPhotos=attachedPhotos,prevNote=curNote,prevLocation=curLocation;
   curCat={id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:rec.axes,stars:rec.stars,useLocation:!!rec.location,useNote:!!rec.note};
   scores={...rec.scores};
   curItem=rec.item||'';
   curStars=rec.curStars||3;
   curNote=rec.note||'';
   curLocation=rec.location?{...rec.location}:null;
-  attachedPhoto=rec.photoDataUrl?dataUrlToFile(rec.photoDataUrl,'photo.jpg'):null;
+  attachedPhotos=rec.photoDataUrl?[dataUrlToFile(rec.photoDataUrl,'photo.jpg')]:[];
   try{ await fn(rec); }
-  finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhoto=prevPhoto; curNote=prevNote; curLocation=prevLocation; }
+  finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhotos=prevPhotos; curNote=prevNote; curLocation=prevLocation; }
 }
 
 async function shareViewedReview(btn){
@@ -3135,7 +3137,7 @@ async function shareViewedReview(btn){
     const text=buildHumanBody(cat,payload,scoreText,rec);
 
     btn.innerHTML='preparing image\u2026';
-    const result=await generateReviewFileSafe(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
+    const result=await generateReviewFileSafe(cat,scoreText,attachedPhotos[0]||null,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
     btn.innerHTML=origHTML;
 
     // The payload .txt has been reliable as a file attachment across every test — keep it
@@ -3145,6 +3147,9 @@ async function shareViewedReview(btn){
     const files=[];
     if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
     files.push(new File([msg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
+    attachedPhotos.forEach((photo,i)=>{
+      files.push(new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'}));
+    });
 
     if(navigator.share){
       try{
@@ -3178,7 +3183,7 @@ async function emailViewedReview(btn){
   withViewRecord(async rec=>{
     const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
     const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
-    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
+    const result=await generateReviewFile(cat,scoreText,attachedPhotos[0]||null,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
     if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
     const payloadBlob=new Blob([msg],{type:'text/plain'});
     downloadBlob(payloadBlob,`review_radar_${cat.id}_${stamp}_payload.txt`);
@@ -3365,7 +3370,7 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
     ctx.drawImage(mapImg,PAD,y,dw,dh); y+=dh+8;
   }
   if(location){
-    ctx.font=`12px '${FONT}',monospace`; ctx.fillStyle=SEC; ctx.textAlign='center';
+    ctx.font=`12px '${FONT}',monospace`; ctx.fillStyle=AMBER; ctx.textAlign='center';
     const locLabel='\uD83D\uDCCD '+(location.address||location.lat.toFixed(5)+', '+location.lng.toFixed(5));
     wrapTextH(ctx,locLabel,PAD,y,W-PAD*2,16);
   }
@@ -3463,37 +3468,75 @@ function downloadBlob(blob,filename){
   document.body.removeChild(a);
 }
 
-// ── PHOTO ATTACHMENT ────────────────────────────────────────────────────
-let attachedPhoto=null;
+// ── PHOTO ATTACHMENT (supports multiple) ─────────────────────────────────
+let attachedPhotos=[];
+
 function handlePhotoSelect(e){
-  const f=e.target.files[0];
-  if(!f) return;
-  attachedPhoto=f;
-  const wrap=document.getElementById('attach-preview');
-  const reader=new FileReader();
-  reader.onload=()=>{
-    wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-      <img src="${reader.result}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:0.5px solid #3A3833">
-      <span style="font-size:0.75em;color:#A8A49E;flex:1">photo attached</span>
-      <span tabindex="0" style="font-size:0.75em;color:#E24B4A;cursor:pointer" onclick="removeAttachedPhoto()">remove</span>
-    </div>`;
-    // Update already-saved record's photo since recordCurrentReview fires before photo attach
-    updateSavedRecordPhoto(reader.result);
-  };
-  reader.onerror=()=>{
-    wrap.innerHTML=`<div style="font-size:0.75em;color:#E24B4A;margin-top:8px">couldn't preview photo, but it's still attached</div>`;
-  };
-  reader.readAsDataURL(f);
+  const files=[...e.target.files];
+  if(!files.length) return;
+  attachedPhotos.push(...files);
+  renderAttachPreview();
+  // A photo changed — the pre-generated share image is now stale (built without
+  // this photo). Invalidate it and rebuild in the background so it's ready by the
+  // time share is tapped, rather than silently reusing the old photo-less version.
+  preGeneratedFile=null;
+  preGenerateShareFile();
+  // Keep the saved record's primary photo in sync (first attached photo — the
+  // record itself still stores one photo; all attached photos go out when sharing).
+  syncSavedRecordPrimaryPhoto();
 }
-function updateSavedRecordPhoto(dataUrl){
+
+function renderAttachPreview(){
+  const wrap=document.getElementById('attach-preview');
+  if(!attachedPhotos.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML='';
+  attachedPhotos.forEach((file,i)=>{
+    const cell=document.createElement('div');
+    cell.style.cssText='position:relative;flex-shrink:0;width:40px;height:40px';
+    const img=document.createElement('img');
+    img.style.cssText='width:40px;height:40px;object-fit:cover;border-radius:4px;border:0.5px solid #3A3833';
+    const reader=new FileReader();
+    reader.onload=()=>{ img.src=reader.result; };
+    reader.readAsDataURL(file);
+    const rm=document.createElement('span');
+    rm.textContent='\u2715';
+    rm.tabIndex=0;
+    rm.style.cssText='position:absolute;top:-5px;right:-5px;width:15px;height:15px;line-height:15px;text-align:center;background:#E24B4A;color:#fff;border-radius:50%;font-size:9px;cursor:pointer';
+    rm.onclick=()=>removeAttachedPhotoAt(i);
+    cell.appendChild(img);
+    cell.appendChild(rm);
+    wrap.appendChild(cell);
+  });
+}
+
+function syncSavedRecordPrimaryPhoto(){
   if(!currentReviewSaved) return;
   const rec=savedReviews.find(r=>r.id===currentReviewId);
-  if(rec){ rec.photoDataUrl=dataUrl; saveSavedReviews(savedReviews); }
+  if(!rec) return;
+  if(!attachedPhotos.length){ rec.photoDataUrl=null; saveSavedReviews(savedReviews); return; }
+  const reader=new FileReader();
+  reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
+  reader.readAsDataURL(attachedPhotos[0]);
 }
+
+function removeAttachedPhotoAt(i){
+  attachedPhotos.splice(i,1);
+  renderAttachPreview();
+  preGeneratedFile=null;
+  preGenerateShareFile();
+  syncSavedRecordPrimaryPhoto();
+  if(!attachedPhotos.length){
+    document.getElementById('photo-input-camera').value='';
+    document.getElementById('photo-input-gallery').value='';
+  }
+}
+
+// Kept for any old call sites — clears everything rather than one photo.
 function removeAttachedPhoto(){
-  attachedPhoto=null;
-  document.getElementById('attach-preview').innerHTML='';
-  updateSavedRecordPhoto(null);
+  attachedPhotos=[];
+  renderAttachPreview();
+  preGeneratedFile=null;
+  syncSavedRecordPrimaryPhoto();
   document.getElementById('photo-input-camera').value='';
   document.getElementById('photo-input-gallery').value='';
 }
@@ -3531,7 +3574,7 @@ async function shareReview(btn){
   if(!result){
     btn.innerHTML='preparing image\u2026';
     const quoteEl=document.getElementById('conf-quote');
-    result=await generateReviewFileSafe(cat,scoreText,attachedPhoto,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
+    result=await generateReviewFileSafe(cat,scoreText,attachedPhotos[0]||null,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
     btn.innerHTML=origHTML;
   }
 
@@ -3542,6 +3585,15 @@ async function shareReview(btn){
   const files=[];
   if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
   files.push(new File([payloadMsg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
+  // All attached photos go out as their own files too (the first is also baked into the
+  // composite image above for visual context, so it may appear twice — that's an
+  // acceptable tradeoff to guarantee none of them are ever silently dropped). Honest
+  // caveat: sharing several files of mixed types together has already proven less
+  // reliable on some Android/Gmail combinations than a single file — attaching more
+  // photos increases that same risk, it's not eliminated just because it's requested.
+  attachedPhotos.forEach((photo,i)=>{
+    files.push(new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'}));
+  });
 
   if(navigator.share){
     try{
@@ -3588,7 +3640,7 @@ async function emailReview(btn){
 async function saveReviewImage(btn){
   const {cat,payload,scoreText,summary,ts}=buildReviewPayload();
   const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
-  const result=await generateReviewFile(cat,scoreText,attachedPhoto,curLocation,document.getElementById('conf-quote')?.textContent||null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
+  const result=await generateReviewFile(cat,scoreText,attachedPhotos[0]||null,curLocation,document.getElementById('conf-quote')?.textContent||null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
   if(result){
     downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
     btnFeedback(btn,`\u2713 saved as ${result.ext.toUpperCase()}!`,'#97C459','#1a2e0a',2500);
