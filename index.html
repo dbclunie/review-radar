@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.71</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.72</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -370,31 +370,33 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
 <!-- SCREEN 5: confirm -->
 <div class="screen" id="s-confirm">
-  <div class="hdr" style="margin-bottom:3px"><span id="hdr-conf-cat"></span><span id="hdr-conf-mode"></span></div>
-  <div id="conf-bars" style="margin-bottom:1px"></div>
-  <div class="divider" style="margin:3px 0"></div>
-  <div id="conf-radar" style="margin:1px auto;max-width:170px"></div>
-  <div class="divider" style="margin:3px 0"></div>
-  <div id="conf-result"></div>
-  <div id="conf-quote" style="font-size:0.7em;color:#A8A49E;line-height:1.3;font-style:italic;text-align:center;margin-top:3px"></div>
-  <div id="conf-location" style="font-size:0.66em;color:#7A7670;text-align:center;margin-top:1px"></div>
+  <div class="hdr" style="margin-bottom:3px;flex-shrink:0"><span id="hdr-conf-cat"></span><span id="hdr-conf-mode"></span></div>
+  <div id="conf-scroll" style="flex:1;overflow-y:auto;min-height:0">
+    <div id="conf-bars" style="margin-bottom:1px"></div>
+    <div class="divider" style="margin:3px 0"></div>
+    <div id="conf-radar" style="margin:1px auto;max-width:170px"></div>
+    <div class="divider" style="margin:3px 0"></div>
+    <div id="conf-result"></div>
+    <div id="conf-quote" style="font-size:0.7em;color:#A8A49E;line-height:1.3;font-style:italic;text-align:center;margin-top:3px"></div>
+    <div id="conf-location" style="font-size:0.66em;color:#7A7670;text-align:center;margin-top:1px"></div>
 
-  <div id="conf-note-wrap" style="display:none;margin-top:4px">
-    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:4px 8px">
-      <div id="conf-note-input" contenteditable="true" role="textbox" data-placeholder="a quick note to yourself..."
-        style="font-family:'Special Elite',monospace;font-size:0.74em;color:#E8E6DE;outline:none;background:transparent;min-height:1.5em;line-height:1.3"
-        oninput="handleConfNoteInput(this)"></div>
+    <div id="conf-note-wrap" style="display:none;margin-top:4px">
+      <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:4px 8px">
+        <div id="conf-note-input" contenteditable="true" role="textbox" data-placeholder="a quick note to yourself..."
+          style="font-family:'Special Elite',monospace;font-size:0.74em;color:#E8E6DE;outline:none;background:transparent;min-height:1.5em;line-height:1.3"
+          oninput="handleConfNoteInput(this)"></div>
+      </div>
+      <div id="conf-note-count" style="font-size:0.58em;color:#A8A49E;text-align:right;margin-top:1px">0/255</div>
     </div>
-    <div id="conf-note-count" style="font-size:0.58em;color:#A8A49E;text-align:right;margin-top:1px">0/255</div>
-  </div>
 
-  <div style="display:flex;gap:8px;margin-top:4px">
-    <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px" onclick="document.getElementById('photo-input-camera').click()">take photo</div>
-    <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px" onclick="document.getElementById('photo-input-gallery').click()">from gallery</div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px" onclick="document.getElementById('photo-input-camera').click()">take photo</div>
+      <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px" onclick="document.getElementById('photo-input-gallery').click()">from gallery</div>
+    </div>
+    <input type="file" id="photo-input-camera" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
+    <input type="file" id="photo-input-gallery" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event)">
+    <div id="attach-preview" style="display:flex;gap:6px;overflow-x:auto;margin-top:4px;max-height:40px"></div>
   </div>
-  <input type="file" id="photo-input-camera" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
-  <input type="file" id="photo-input-gallery" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event)">
-  <div id="attach-preview" style="display:flex;gap:6px;overflow-x:auto;margin-top:4px;max-height:40px;flex-shrink:0"></div>
 
   <div style="display:flex;gap:8px;margin-top:4px;flex-shrink:0">
     <button class="send-btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:0;padding:8px" onclick="shareReview(this)">
@@ -417,9 +419,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div id="view-location" style="font-size:0.75em;text-align:center;margin-top:4px"></div>
   <div id="view-map-preview" style="display:none;height:120px;border-radius:6px;overflow:hidden;margin-top:6px;border:0.5px solid #33312C"></div>
   <div id="view-note" style="display:none;font-size:0.78em;color:#A8A49E;line-height:1.4;text-align:center;margin-top:8px;padding:6px 10px;background:#1A1814;border-radius:6px"></div>
-  <div id="view-photo-display" style="display:none;margin-top:10px;text-align:center">
-    <img id="view-photo-img" style="max-width:100%;border-radius:6px;cursor:pointer" onclick="window.open(this.src,'_blank')">
-  </div>
+  <div id="view-photo-display" style="display:none;margin-top:10px;gap:6px;overflow-x:auto"></div>
 
   <div style="margin-top:8px">
     <button class="send-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px" onclick="shareViewedReview(this)">
@@ -1044,7 +1044,7 @@ function editSavedReview(id){
   curLocation=rec.location?{...rec.location}:null;
   curMapSnapshot=null;
   curNote=rec.note||'';
-  attachedPhotos=rec.photoDataUrl?[dataUrlToFile(rec.photoDataUrl,'photo.jpg')]:[];
+  attachedPhotos=(rec.photoDataUrls&&rec.photoDataUrls.length)?rec.photoDataUrls.map((u,i)=>dataUrlToFile(u,'photo'+i+'.jpg')):(rec.photoDataUrl?[dataUrlToFile(rec.photoDataUrl,'photo.jpg')]:[]);
   locationPending=false;
   currentReviewSaved=false;
   currentReviewId=null;
@@ -1075,11 +1075,7 @@ function updateExistingReview(cat,payload,scoreText){
   saveSavedReviews(savedReviews);
   renderSavedReviewsList();
   evaluateAchievements(); // scores may have changed grade/star counts — re-check, but no streak/volume bump
-  if(attachedPhotos.length){
-    const reader=new FileReader();
-    reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
-    reader.readAsDataURL(attachedPhotos[0]);
-  }
+  syncPhotosToRecord(rec);
 }
 
 // ── SCREEN 3: ITEM NAME ───────────────────────────────────────────────────
@@ -1614,11 +1610,7 @@ function recordCurrentReview(cat,payload,scoreText){
     setTimeout(()=>showBackupNudge(`you\u2019ve got ${savedReviews.length} reviews saved now \u2014 a great time to back up.`),1000);
   }
   // Photo may already be attached if user picked it before this fired
-  if(attachedPhotos.length){
-    const reader=new FileReader();
-    reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
-    reader.readAsDataURL(attachedPhotos[0]);
-  }
+  syncPhotosToRecord(rec);
 }
 
 // ── STREAK CALCULATION ──────────────────────────────────────────────────
@@ -3053,12 +3045,12 @@ function viewSavedReview(id){
     </div>`;
   }
 
-  // show stored photo if present, clickable to open full size
+  // show stored photo thumbnails, click any to open full size
   const photoDisplay=document.getElementById('view-photo-display');
-  const photoImg=document.getElementById('view-photo-img');
-  if(rec.photoDataUrl){
-    photoDisplay.style.display='block';
-    photoImg.src=rec.photoDataUrl;
+  const urls=(rec.photoDataUrls&&rec.photoDataUrls.length)?rec.photoDataUrls:(rec.photoDataUrl?[rec.photoDataUrl]:[]);
+  if(urls.length){
+    photoDisplay.style.display='flex';
+    photoDisplay.innerHTML=urls.map(u=>`<img src="${u}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:0.5px solid #3A3833;cursor:pointer;flex-shrink:0" onclick="window.open('${u}','_blank')">`).join('');
   } else {
     photoDisplay.style.display='none';
   }
@@ -3106,7 +3098,7 @@ async function withViewRecord(fn){
   curStars=rec.curStars||3;
   curNote=rec.note||'';
   curLocation=rec.location?{...rec.location}:null;
-  attachedPhotos=rec.photoDataUrl?[dataUrlToFile(rec.photoDataUrl,'photo.jpg')]:[];
+  attachedPhotos=(rec.photoDataUrls&&rec.photoDataUrls.length)?rec.photoDataUrls.map((u,i)=>dataUrlToFile(u,'photo'+i+'.jpg')):(rec.photoDataUrl?[dataUrlToFile(rec.photoDataUrl,'photo.jpg')]:[]);
   try{ await fn(rec); }
   finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhotos=prevPhotos; curNote=prevNote; curLocation=prevLocation; }
 }
@@ -3492,10 +3484,17 @@ function syncSavedRecordPrimaryPhoto(){
   if(!currentReviewSaved) return;
   const rec=savedReviews.find(r=>r.id===currentReviewId);
   if(!rec) return;
-  if(!attachedPhotos.length){ rec.photoDataUrl=null; saveSavedReviews(savedReviews); return; }
-  const reader=new FileReader();
-  reader.onload=()=>{ rec.photoDataUrl=reader.result; saveSavedReviews(savedReviews); };
-  reader.readAsDataURL(attachedPhotos[0]);
+  syncPhotosToRecord(rec);
+}
+
+async function syncPhotosToRecord(rec){
+  if(!attachedPhotos.length){ rec.photoDataUrls=[]; rec.photoDataUrl=null; saveSavedReviews(savedReviews); return; }
+  const urls=await Promise.all(attachedPhotos.map(f=>new Promise(res=>{
+    const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>res(null); r.readAsDataURL(f);
+  })));
+  rec.photoDataUrls=urls.filter(Boolean);
+  rec.photoDataUrl=rec.photoDataUrls[0]||null; // legacy field kept in sync for old code paths
+  saveSavedReviews(savedReviews);
 }
 
 function removeAttachedPhotoAt(i){
