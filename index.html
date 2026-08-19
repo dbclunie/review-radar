@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.69</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.70</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -369,35 +369,35 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- SCREEN 5: confirm -->
-<div class="screen" id="s-confirm">
-  <div class="hdr" style="margin-bottom:4px"><span id="hdr-conf-cat"></span><span id="hdr-conf-mode"></span></div>
-  <div id="conf-bars" style="margin-bottom:2px"></div>
-  <div class="divider" style="margin:4px 0"></div>
-  <div id="conf-radar" style="margin:2px auto;max-width:200px"></div>
-  <div class="divider" style="margin:4px 0"></div>
+<div class="screen" id="s-confirm" style="overflow-y:auto">
+  <div class="hdr" style="margin-bottom:3px"><span id="hdr-conf-cat"></span><span id="hdr-conf-mode"></span></div>
+  <div id="conf-bars" style="margin-bottom:1px"></div>
+  <div class="divider" style="margin:3px 0"></div>
+  <div id="conf-radar" style="margin:1px auto;max-width:170px"></div>
+  <div class="divider" style="margin:3px 0"></div>
   <div id="conf-result"></div>
-  <div id="conf-quote" style="font-size:0.72em;color:#A8A49E;line-height:1.4;font-style:italic;text-align:center;margin-top:4px"></div>
-  <div id="conf-location" style="font-size:0.68em;color:#7A7670;text-align:center;margin-top:2px"></div>
-  <div id="conf-map-preview" style="display:none;height:85px;border-radius:6px;overflow:hidden;margin-top:4px;border:0.5px solid #33312C"></div>
+  <div id="conf-quote" style="font-size:0.7em;color:#A8A49E;line-height:1.3;font-style:italic;text-align:center;margin-top:3px"></div>
+  <div id="conf-location" style="font-size:0.66em;color:#7A7670;text-align:center;margin-top:1px"></div>
+  <div id="conf-map-preview" style="display:none;height:70px;border-radius:6px;overflow:hidden;margin-top:3px;border:0.5px solid #33312C"></div>
 
-  <div id="conf-note-wrap" style="display:none;margin-top:5px">
-    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:5px 8px">
+  <div id="conf-note-wrap" style="display:none;margin-top:4px">
+    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:4px 8px">
       <div id="conf-note-input" contenteditable="true" role="textbox" data-placeholder="a quick note to yourself..."
-        style="font-family:'Special Elite',monospace;font-size:0.76em;color:#E8E6DE;outline:none;background:transparent;min-height:1.8em;line-height:1.35"
+        style="font-family:'Special Elite',monospace;font-size:0.74em;color:#E8E6DE;outline:none;background:transparent;min-height:1.5em;line-height:1.3"
         oninput="handleConfNoteInput(this)"></div>
     </div>
-    <div id="conf-note-count" style="font-size:0.6em;color:#A8A49E;text-align:right;margin-top:1px">0/255</div>
+    <div id="conf-note-count" style="font-size:0.58em;color:#A8A49E;text-align:right;margin-top:1px">0/255</div>
   </div>
 
-  <div style="display:flex;gap:8px;margin-top:6px">
-    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('photo-input-camera').click()">take photo</div>
-    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="document.getElementById('photo-input-gallery').click()">from gallery</div>
+  <div style="display:flex;gap:8px;margin-top:4px">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px" onclick="document.getElementById('photo-input-camera').click()">take photo</div>
+    <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px" onclick="document.getElementById('photo-input-gallery').click()">from gallery</div>
   </div>
   <input type="file" id="photo-input-camera" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
   <input type="file" id="photo-input-gallery" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event)">
-  <div id="attach-preview" style="display:flex;gap:6px;overflow-x:auto;margin-top:6px;max-height:44px"></div>
+  <div id="attach-preview" style="display:flex;gap:6px;overflow-x:auto;margin-top:4px;max-height:40px;flex-shrink:0"></div>
 
-  <div style="display:flex;gap:8px;margin-top:6px;flex-shrink:0">
+  <div style="display:flex;gap:8px;margin-top:4px;flex-shrink:0">
     <button class="send-btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:0;padding:8px" onclick="shareReview(this)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#412402" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
       share
@@ -1233,7 +1233,7 @@ function renderConfirm(){
 
   // result block
   const res=document.getElementById('conf-result');
-  const starMid=cat.stars?`<div style="margin:0 10px">${starSVG(5,curStars,20,'setConfirmStars')}</div>`:'';
+  const starMid=cat.stars?`<div style="margin:0 10px">${starSVG(5,curStars,20,null)}</div>`:'';
   if(cat.mode==='review'){
     const total=ax.reduce((s,a)=>s+(scores[a]||0),0);
     const max=ax.length*SCALE;
@@ -3147,9 +3147,6 @@ async function shareViewedReview(btn){
     const files=[];
     if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
     files.push(new File([msg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
-    attachedPhotos.forEach((photo,i)=>{
-      files.push(new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'}));
-    });
 
     if(navigator.share){
       try{
@@ -3585,15 +3582,9 @@ async function shareReview(btn){
   const files=[];
   if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
   files.push(new File([payloadMsg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
-  // All attached photos go out as their own files too (the first is also baked into the
-  // composite image above for visual context, so it may appear twice — that's an
-  // acceptable tradeoff to guarantee none of them are ever silently dropped). Honest
-  // caveat: sharing several files of mixed types together has already proven less
-  // reliable on some Android/Gmail combinations than a single file — attaching more
-  // photos increases that same risk, it's not eliminated just because it's requested.
-  attachedPhotos.forEach((photo,i)=>{
-    files.push(new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'}));
-  });
+  // Raw photos are deliberately NOT bundled into this same multi-file share — sharing
+  // an image + another image together caused Gmail to merge them into one combined
+  // image on the receiving end. First photo stays visible via the composite above.
 
   if(navigator.share){
     try{
