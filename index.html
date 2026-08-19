@@ -162,7 +162,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.56</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.57</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -621,7 +621,7 @@ function handleRestoreFile(e){
 function confirmRestore(){
   if(!pendingRestoreData) return;
   showConfirmModal(
-    "Restoring will replace your current categories and reviews with this backup. Anything added since isn't in the backup and will be lost.",
+    "Restoring will replace your current categories and reviews with this backup. If you haven't backed up what's on this device right now, do that first \u2014 anything added since your last backup will be lost.",
     ()=>{
       registry=pendingRestoreData.registry;
       savedReviews=pendingRestoreData.savedReviews;
@@ -923,7 +923,8 @@ function toggleCatSelection(idx){
   renderCatSelect();
 }
 function deleteSelectedCats(){
-  setMaxCounter('rr_bulk_delete_cat_max',selectedCatIds.size);
+  const batchSize=selectedCatIds.size;
+  setMaxCounter('rr_bulk_delete_cat_max',batchSize);
   // Delete by index — filter keeps entries whose index is NOT selected
   registry=registry.filter((_,i)=>!selectedCatIds.has(i));
   saveRegistry(registry);
@@ -932,6 +933,7 @@ function deleteSelectedCats(){
   closeCatDD();
   renderCatSelect();
   evaluateAchievements();
+  if(batchSize>=3) showBackupNudge(`you just deleted ${batchSize} categories \u2014 good time to make sure your backup is current.`);
 }
 
 function updateCatDDSelected(){
@@ -1512,6 +1514,9 @@ function recordCurrentReview(cat,payload,scoreText){
   renderSavedReviewsList();
   checkFullMonthStreak();
   evaluateAchievements();
+  if(REVIEW_VOLUME_NUDGE_AT.has(savedReviews.length)){
+    setTimeout(()=>showBackupNudge(`you\u2019ve got ${savedReviews.length} reviews saved now \u2014 a great time to back up.`),1000);
+  }
   // Photo may already be attached if user picked it before this fired
   if(attachedPhoto){
     const reader=new FileReader();
@@ -1557,11 +1562,20 @@ function saveAchievements(list){
 }
 let achievements=loadAchievements();
 
+const MAJOR_ACHIEVEMENT_IDS=new Set([
+  'vol-100','vol-500','vol-1000',
+  'streak-90','streak-180','streak-365',
+  'month-streak-1','month-streak-2','month-streak-3','month-streak-6','month-streak-12'
+]);
+const REVIEW_VOLUME_NUDGE_AT=new Set([50,100,250,500,1000]);
 function unlockAchievement(id,title,description){
   if(achievements.find(a=>a.id===id)) return; // already unlocked
   achievements.push({id,title,description,earnedAt:new Date().toISOString()});
   saveAchievements(achievements);
   showAchievementToast(title);
+  if(MAJOR_ACHIEVEMENT_IDS.has(id)){
+    setTimeout(()=>showBackupNudge(`nice work on "${title}" \u2014 worth backing up your progress.`),3000);
+  }
 }
 
 function showAchievementToast(title){
@@ -1574,6 +1588,21 @@ function showAchievementToast(title){
     t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)';
     setTimeout(()=>t.remove(),300);
   },2600);
+}
+
+let backupNudgeShownThisSession=false;
+function showBackupNudge(message){
+  if(document.getElementById('backup-nudge-banner')) return; // already showing one
+  const n=document.createElement('div');
+  n.id='backup-nudge-banner';
+  n.style.cssText='position:fixed;top:0;left:0;right:0;background:#1E1C18;border-bottom:1px solid #F2A623;padding:10px 16px;z-index:250;display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(-8px);transition:opacity .3s,transform .3s;font-family:\'Special Elite\',monospace';
+  n.innerHTML=`
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <div style="flex:1;color:#E8E6DE;font-size:0.75em;line-height:1.3">${message}</div>
+    <div tabindex="0" style="color:#412402;background:#F2A623;border-radius:5px;padding:5px 10px;font-size:0.72em;font-weight:bold;cursor:pointer;flex-shrink:0" onclick="exportBackup();this.closest('#backup-nudge-banner').remove()">back up</div>
+    <span tabindex="0" style="color:#7A7670;cursor:pointer;font-size:0.9em;flex-shrink:0" onclick="this.closest('#backup-nudge-banner').remove()">\u2715</span>`;
+  document.body.appendChild(n);
+  requestAnimationFrame(()=>{ n.style.opacity='1'; n.style.transform='translateY(0)'; });
 }
 
 // ── ACHIEVEMENT DEFINITIONS (curated, round-number set) ──────────────────
@@ -1744,6 +1773,17 @@ const ACHIEVEMENT_DEFS=[
 
 {"id":"secret-found","title":"You Found It","description":"Discover the secret achievements page for the first time.","checkType":"page_opened","threshold":1},
 {"id":"gesture-first-discovery","title":"What do we have here...","description":"Draw a V shape near the calendar, even by accident.","checkType":"v_shape_drawn","threshold":1},
+{"id":"backup-days-3","title":"Backup Beginner","description":"3 days since your first backup.","checkType":"days_since_first_backup","threshold":3},
+{"id":"backup-days-5","title":"Getting Cautious","description":"5 days since your first backup.","checkType":"days_since_first_backup","threshold":5},
+{"id":"backup-days-10","title":"Playing It Safe","description":"10 days since your first backup.","checkType":"days_since_first_backup","threshold":10},
+{"id":"backup-days-20","title":"Data Guardian","description":"20 days since your first backup.","checkType":"days_since_first_backup","threshold":20},
+{"id":"backup-days-30","title":"One Month Secure","description":"30 days since your first backup.","checkType":"days_since_first_backup","threshold":30},
+{"id":"backup-days-60","title":"Two Months In","description":"60 days since your first backup.","checkType":"days_since_first_backup","threshold":60},
+{"id":"backup-days-90","title":"Quarterly Vault","description":"90 days since your first backup.","checkType":"days_since_first_backup","threshold":90},
+{"id":"backup-days-180","title":"Half-Year Archive","description":"180 days since your first backup.","checkType":"days_since_first_backup","threshold":180},
+{"id":"backup-days-365","title":"One Year Backed Up","description":"1 year since your first backup.","checkType":"days_since_first_backup","threshold":365},
+{"id":"backup-days-1825","title":"Five Year Vault","description":"5 years since your first backup.","checkType":"days_since_first_backup","threshold":1825},
+{"id":"backup-days-3650","title":"Decade of Data","description":"10 years since your first backup.","checkType":"days_since_first_backup","threshold":3650},
 {"id":"gesture-success-5","title":"Star Struck","description":"Successfully draw the star gesture 5 times.","checkType":"gesture_success_count","threshold":5},
 {"id":"gesture-success-25","title":"Constellation","description":"Successfully draw the star gesture 25 times.","checkType":"gesture_success_count","threshold":25},
 {"id":"gesture-fail-5","title":"Trial and Error","description":"Attempt the star gesture unsuccessfully 5 times.","checkType":"gesture_fail_count","threshold":5},
@@ -1857,6 +1897,10 @@ function computeAchievementStats(){
     gestureFastestMs:getCounter('rr_gesture_fastest_ms'),
     gestureMaxBboxPct:getCounter('rr_gesture_max_bbox_pct'),
     vShapeDrawn:getCounter('rr_v_shape_count')>0,
+    daysSinceFirstBackup:(()=>{
+      const t=localStorage.getItem('rr_first_backup_at');
+      return t?Math.floor((Date.now()-new Date(t).getTime())/86400000):-1;
+    })(),
     viewedBeforeAny:localStorage.getItem('rr_skeptic_earned')==='1',
     bulkDeleteReviewsMax:getCounter('rr_bulk_delete_review_max'),
     bulkDeleteCatsMax:getCounter('rr_bulk_delete_cat_max'),
@@ -1926,6 +1970,7 @@ function evaluateAchievements(){
       case 'page_opened': met=stats.pageOpened; break;
       case 'gesture_success_count': met=stats.gestureSuccessCount>=def.threshold; break;
       case 'v_shape_drawn': met=stats.vShapeDrawn; break;
+      case 'days_since_first_backup': met=stats.daysSinceFirstBackup>=def.threshold; break;
       case 'gesture_fail_count': met=stats.gestureFailCount>=def.threshold; break;
       case 'gesture_fast': met=stats.gestureFastestMs>0 && stats.gestureFastestMs<=def.threshold; break;
       case 'gesture_large': met=stats.gestureMaxBboxPct>=def.threshold; break;
@@ -2532,7 +2577,10 @@ function showMonthStreakCelebration(monthLength,monthKey){
       'Mega Monthly Streak',
       `Reviewed something every single day in ${monthName} (${monthLength} days straight).`
     );
-    setTimeout(()=>{ scOverlay.style.display='none'; },900);
+    setTimeout(()=>{
+      scOverlay.style.display='none';
+      showBackupNudge('you just completed a full month streak \u2014 a great moment to back up.');
+    },900);
   };
 }
 
@@ -2838,13 +2886,15 @@ function toggleReviewSelection(id){
   renderSavedReviewsList();
 }
 function deleteSelectedReviews(){
-  setMaxCounter('rr_bulk_delete_review_max',selectedReviewIds.size);
+  const batchSize=selectedReviewIds.size;
+  setMaxCounter('rr_bulk_delete_review_max',batchSize);
   savedReviews=savedReviews.filter(r=>!selectedReviewIds.has(r.id));
   saveSavedReviews(savedReviews);
   selectModeActive=false;
   selectedReviewIds.clear();
   renderSavedReviewsList();
   evaluateAchievements();
+  if(batchSize>=5) showBackupNudge(`you just deleted ${batchSize} reviews \u2014 good time to make sure your backup is current.`);
 }
 
 function viewSavedReview(id){
@@ -3807,6 +3857,20 @@ renderModeExamples();
 setMode('review');
 renderCatSelect();
 renderSavedReviewsList();
+evaluateAchievements(); // catches pure time-elapsed milestones (e.g. backup longevity) on every load
+
+// Nudge once per session if backups are stale (or never done) and there's real data to protect
+if(savedReviews.length>=5){
+  const lastAt=localStorage.getItem('rr_last_backup_at');
+  const daysSince=lastAt?Math.floor((Date.now()-new Date(lastAt).getTime())/86400000):Infinity;
+  if(daysSince>=14){
+    setTimeout(()=>{
+      showBackupNudge(lastAt
+        ? `it\u2019s been ${daysSince} days since your last backup.`
+        : `you\u2019ve got ${savedReviews.length} reviews saved and no backup yet.`);
+    },1500);
+  }
+}
 </script>
 </body>
 </html>
