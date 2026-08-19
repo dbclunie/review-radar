@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.60</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.61</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -1441,10 +1441,14 @@ function staticMapUrl(lat,lng,zoom,w,h){
 }
 
 async function fetchMapSnapshot(lat,lng){
-  // Load static map tile as a data URL via fetch so canvas can draw it without taint
+  // Load static map tile as a data URL via fetch so canvas can draw it without taint.
+  // Bounded with a timeout — this hits a third-party service and must never hang forever.
   try{
     const url=staticMapUrl(lat,lng,15,544,200);
-    const resp=await fetch(url);
+    const controller=new AbortController();
+    const timeoutId=setTimeout(()=>controller.abort(),6000);
+    const resp=await fetch(url,{signal:controller.signal});
+    clearTimeout(timeoutId);
     if(!resp.ok) return null;
     const blob=await resp.blob();
     return await new Promise(res=>{
@@ -3114,7 +3118,7 @@ async function shareViewedReview(btn){
 
     const origHTML=btn.innerHTML;
     btn.innerHTML='preparing image\u2026';
-    const result=await generateReviewFile(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
+    const result=await generateReviewFileSafe(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
     btn.innerHTML=origHTML;
 
     const files=[];
@@ -3173,6 +3177,17 @@ function queuePayload(msg){
     q.push(msg);
     localStorage.setItem('rr_queue',JSON.stringify(q));
   }catch(e){}
+}
+
+// Bounded wrapper — guarantees callers never hang indefinitely, even from an
+// unforeseen cause (image load stall, font loading, etc.), not just the map fetch.
+async function generateReviewFileSafe(...args){
+  try{
+    return await Promise.race([
+      generateReviewFile(...args),
+      new Promise(res=>setTimeout(()=>res(null),10000))
+    ]);
+  }catch(e){ return null; }
 }
 
 async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,starsVal,mapImageDataUrl,noteText){
@@ -3396,7 +3411,7 @@ async function shareReview(btn){
   if(!result){
     btn.innerHTML='preparing image\u2026';
     const quoteEl=document.getElementById('conf-quote');
-    result=await generateReviewFile(cat,scoreText,attachedPhoto,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
+    result=await generateReviewFileSafe(cat,scoreText,attachedPhoto,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
     btn.innerHTML=origHTML;
   }
 
