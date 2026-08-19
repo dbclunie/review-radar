@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.63</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.64</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -3114,29 +3114,26 @@ async function shareViewedReview(btn){
     const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
     const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
     const title=`Review Radar \u00b7 ${cat.label}${rec.item?' \u00b7 '+rec.item:''}`;
-    const text=buildHumanBody(cat,payload,scoreText,rec);
+    const text=buildHumanBody(cat,payload,scoreText,rec)+'\n\n'+msg;
 
     const origHTML=btn.innerHTML;
     btn.innerHTML='preparing image\u2026';
     const result=await generateReviewFileSafe(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
     btn.innerHTML=origHTML;
 
-    const files=[];
-    if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
-    files.push(new File([msg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
-    if(attachedPhoto) files.push(attachedPhoto);
+    // Single file only — mixing an image with a separate text-file attachment is an
+    // unreliable combination on Android's share intent across devices/Gmail versions.
+    const files=result?[new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type})]:[];
 
     if(navigator.share){
       try{
         const canShareFiles=files.length&&navigator.canShare&&navigator.canShare({files});
-        console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles,'| file count:',files.length);
+        console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles);
         const shareData=canShareFiles?{title,text,files}:{title,text};
         await navigator.share(shareData);
         bumpCounter('rr_share_count'); evaluateAchievements();
-        if(canShareFiles && !result){
-          btnFeedback(btn,'shared \u2014 image missing','#c58a1e','#1a2e0a',3000);
-        } else if(!canShareFiles){
-          btnFeedback(btn,'shared text only \u2014 files unsupported here','#c58a1e','#1a2e0a',3000);
+        if(!canShareFiles && result){
+          btnFeedback(btn,'shared \u2014 image unsupported here','#c58a1e','#1a2e0a',3000);
         } else {
           btnFeedback(btn,'\u2713 shared!','#97C459','#1a2e0a',2500);
         }
@@ -3450,12 +3447,14 @@ async function shareReview(btn){
   const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
   const stamp=preGeneratedStamp||ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
   const title=`Review Radar \u00b7 ${cat.label}${curItem?' \u00b7 '+curItem:''}`;
-  const text=buildHumanBody(cat,payload,scoreText,null);
   const payloadMsg=preGeneratedMsg||msg;
+  // Payload embedded directly in the text body — this guarantees it arrives regardless
+  // of how reliably the platform handles file attachments, since text always makes it.
+  const text=buildHumanBody(cat,payload,scoreText,null)+'\n\n'+payloadMsg;
 
-  // Use the pre-generated image if it's ready. If not (e.g. you tapped share before
-  // background generation finished — this used to silently ship the .txt with no image),
-  // generate it now rather than sharing without it.
+  // Use the pre-generated image if it's ready. If not, generate it now rather than
+  // sharing without it. The photo (if any) is already baked into this composite image,
+  // so it doesn't need to be shared separately.
   let result=preGeneratedFile;
   const origHTML=btn.innerHTML;
   if(!result){
@@ -3465,22 +3464,19 @@ async function shareReview(btn){
     btn.innerHTML=origHTML;
   }
 
-  const files=[];
-  if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
-  files.push(new File([payloadMsg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
-  if(attachedPhoto) files.push(attachedPhoto);
+  // Single file only — mixing an image with a separate text-file attachment is an
+  // unreliable combination on Android's share intent across devices/Gmail versions.
+  const files=result?[new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type})]:[];
 
   if(navigator.share){
     try{
       const canShareFiles=files.length&&navigator.canShare&&navigator.canShare({files});
-      console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles,'| file count:',files.length);
+      console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles);
       const shareData=canShareFiles?{title,text,files}:{title,text};
       await navigator.share(shareData);
       bumpCounter('rr_share_count'); evaluateAchievements();
-      if(canShareFiles && !result){
-        btnFeedback(btn,'shared \u2014 image missing','#c58a1e','#1a2e0a',3000);
-      } else if(!canShareFiles){
-        btnFeedback(btn,'shared text only \u2014 files unsupported here','#c58a1e','#1a2e0a',3000);
+      if(!canShareFiles && result){
+        btnFeedback(btn,'shared \u2014 image unsupported here','#c58a1e','#1a2e0a',3000);
       } else {
         btnFeedback(btn,'\u2713 shared!','#97C459','#1a2e0a',2500);
       }
