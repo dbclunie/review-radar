@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.58</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.59</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -264,6 +264,23 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div class="field-label">axes</div>
     <div id="edit-axes-list"></div>
     <div id="edit-axes-warning" style="display:none;font-size:0.72em;color:#7A7670;margin-top:8px;line-height:1.5;background:#1A1814;border-radius:6px;padding:8px"></div>
+
+    <div style="height:10px"></div>
+    <div class="field-label">options</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;margin-top:2px">
+      <div class="star-toggle-row" onclick="toggleEditCatStars()" style="margin-bottom:0">
+        <div class="star-toggle-box" id="edit-cat-stars-box"></div>
+        <span>1–5 stars</span>
+      </div>
+      <div class="star-toggle-row" onclick="toggleEditCatLocation()" style="margin-bottom:0">
+        <div class="star-toggle-box" id="edit-cat-location-box"></div>
+        <span>location</span>
+      </div>
+      <div class="star-toggle-row" onclick="toggleEditCatNote()" style="margin-bottom:0">
+        <div class="star-toggle-box" id="edit-cat-note-box"></div>
+        <span>note field</span>
+      </div>
+    </div>
   </div>
   <div class="btn-row" style="flex-shrink:0;padding-top:10px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeEditCategory()">cancel</div>
@@ -3676,6 +3693,22 @@ function saveNewCat(){
 
 // ── EDIT CATEGORY (rename category + axes, migrating existing saved reviews) ──
 let editingCatIndex=null;
+let editStars=true;
+let editLocation=false;
+let editNote=false;
+
+function toggleEditCatStars(){
+  editStars=!editStars;
+  document.getElementById('edit-cat-stars-box').classList.toggle('on',editStars);
+}
+function toggleEditCatLocation(){
+  editLocation=!editLocation;
+  document.getElementById('edit-cat-location-box').classList.toggle('on',editLocation);
+}
+function toggleEditCatNote(){
+  editNote=!editNote;
+  document.getElementById('edit-cat-note-box').classList.toggle('on',editNote);
+}
 
 function openEditCategory(index){
   const cat=registry[index];
@@ -3689,11 +3722,18 @@ function openEditCategory(index){
 
   renderEditAxesList(cat.axes);
 
+  editStars=!!cat.stars;
+  editLocation=!!cat.useLocation;
+  editNote=!!cat.useNote;
+  document.getElementById('edit-cat-stars-box').classList.toggle('on',editStars);
+  document.getElementById('edit-cat-location-box').classList.toggle('on',editLocation);
+  document.getElementById('edit-cat-note-box').classList.toggle('on',editNote);
+
   const reviewCount=savedReviews.filter(r=>r.catId===cat.id).length;
   const warnEl=document.getElementById('edit-axes-warning');
   if(reviewCount>0){
     warnEl.style.display='block';
-    warnEl.textContent=`${reviewCount} saved review${reviewCount===1?'':'s'} use${reviewCount===1?'s':''} this category. Renaming an axis updates those reviews too — the axis count and order can't be changed.`;
+    warnEl.textContent=`${reviewCount} saved review${reviewCount===1?'':'s'} use${reviewCount===1?'s':''} this category. Renaming an axis updates those reviews too — the axis count and order can't be changed. Turning an option off only affects new reviews going forward; past saved data isn't touched.`;
   } else {
     warnEl.style.display='none';
   }
@@ -3771,6 +3811,9 @@ function saveEditedCategory(){
 
   cat.label=newLabel;
   cat.axes=newAxes;
+  cat.stars=editStars;
+  cat.useLocation=editLocation;
+  cat.useNote=editNote;
   saveRegistry(registry);
 
   // Migrate existing saved reviews: update catLabel + rename score keys for any changed axis
