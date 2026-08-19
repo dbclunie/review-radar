@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.66</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.67</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -386,7 +386,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
         style="font-family:'Special Elite',monospace;font-size:0.78em;color:#E8E6DE;outline:none;background:transparent;min-height:2.2em;line-height:1.4"
         oninput="handleConfNoteInput(this)"></div>
     </div>
-    <div id="conf-note-count" style="font-size:0.62em;color:#5f4419;text-align:right;margin-top:2px">0/255</div>
+    <div id="conf-note-count" style="font-size:0.62em;color:#A8A49E;text-align:right;margin-top:2px">0/255</div>
   </div>
 
   <div style="display:flex;gap:8px;margin-top:6px">
@@ -1328,7 +1328,10 @@ function discardReview(){
 async function reverseGeocode(lat,lng){
   try{
     const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
-    const resp=await fetch(url,{headers:{'Accept':'application/json'}});
+    const controller=new AbortController();
+    const timeoutId=setTimeout(()=>controller.abort(),6000);
+    const resp=await fetch(url,{headers:{'Accept':'application/json'},signal:controller.signal});
+    clearTimeout(timeoutId);
     if(!resp.ok) return null;
     const d=await resp.json();
     return d.display_name||null;
@@ -3098,25 +3101,39 @@ function dataUrlToFile(dataUrl,filename){
 async function withViewRecord(fn){
   const rec=savedReviews.find(r=>r.id===viewingReviewId);
   if(!rec) return;
-  const prevCat=curCat,prevScores=scores,prevItem=curItem,prevStars=curStars,prevPhoto=attachedPhoto,prevNote=curNote;
+  const prevCat=curCat,prevScores=scores,prevItem=curItem,prevStars=curStars,prevPhoto=attachedPhoto,prevNote=curNote,prevLocation=curLocation;
   curCat={id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:rec.axes,stars:rec.stars,useLocation:!!rec.location,useNote:!!rec.note};
   scores={...rec.scores};
   curItem=rec.item||'';
   curStars=rec.curStars||3;
   curNote=rec.note||'';
+  curLocation=rec.location?{...rec.location}:null;
   attachedPhoto=rec.photoDataUrl?dataUrlToFile(rec.photoDataUrl,'photo.jpg'):null;
   try{ await fn(rec); }
-  finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhoto=prevPhoto; curNote=prevNote; }
+  finally{ curCat=prevCat; scores=prevScores; curItem=prevItem; curStars=prevStars; attachedPhoto=prevPhoto; curNote=prevNote; curLocation=prevLocation; }
 }
 
 async function shareViewedReview(btn){
   await withViewRecord(async rec=>{
+    const origHTML=btn.innerHTML;
+    // Some older saved reviews may have been created before their address resolved.
+    // Fix it now, and persist it so future shares of this same review don't repeat the wait.
+    if(rec.location && !rec.location.address){
+      btn.innerHTML='finding address\u2026';
+      const addr=await reverseGeocode(rec.location.lat,rec.location.lng);
+      if(addr){
+        rec.location.address=addr;
+        curLocation.address=addr;
+        saveSavedReviews(savedReviews);
+      }
+      btn.innerHTML=origHTML;
+    }
+
     const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
     const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
     const title=`Review Radar \u00b7 ${cat.label}${rec.item?' \u00b7 '+rec.item:''}`;
     const text=buildHumanBody(cat,payload,scoreText,rec);
 
-    const origHTML=btn.innerHTML;
     btn.innerHTML='preparing image\u2026';
     const result=await generateReviewFileSafe(cat,scoreText,attachedPhoto,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
     btn.innerHTML=origHTML;
@@ -3333,7 +3350,7 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
     y+=wrapTextH(ctx,`"${quoteText}"`,PAD,y,W-PAD*2,22)+16;
   }
   if(noteText){
-    ctx.font=`bold 11px '${FONT}',monospace`; ctx.fillStyle=MUT; ctx.textAlign='center';
+    ctx.font=`bold 11px '${FONT}',monospace`; ctx.fillStyle=SEC; ctx.textAlign='center';
     ctx.fillText('note',W/2,y+10);
     y+=20;
     ctx.font=`13px '${FONT}',monospace`; ctx.fillStyle=TXT; ctx.textAlign='center';
@@ -3348,7 +3365,7 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
     ctx.drawImage(mapImg,PAD,y,dw,dh); y+=dh+8;
   }
   if(location){
-    ctx.font=`12px '${FONT}',monospace`; ctx.fillStyle=MUT; ctx.textAlign='center';
+    ctx.font=`12px '${FONT}',monospace`; ctx.fillStyle=SEC; ctx.textAlign='center';
     const locLabel='\uD83D\uDCCD '+(location.address||location.lat.toFixed(5)+', '+location.lng.toFixed(5));
     wrapTextH(ctx,locLabel,PAD,y,W-PAD*2,16);
   }
@@ -3490,6 +3507,17 @@ function btnFeedback(btn,html,bg,col,ms){
 
 // ── SHARE ──────────────────────────────────────────────────────────────
 async function shareReview(btn){
+  const origHTML=btn.innerHTML;
+  // If a location is set but its address hasn't resolved yet (reverse geocoding runs
+  // in the background and can lose the race if you share quickly), wait for it now —
+  // otherwise the payload, text, and image all fall back to raw coordinates.
+  if(curLocation && !curLocation.address){
+    btn.innerHTML='finding address\u2026';
+    const addr=await reverseGeocode(curLocation.lat,curLocation.lng);
+    if(addr && curLocation) curLocation.address=addr;
+    btn.innerHTML=origHTML;
+  }
+
   const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
   const stamp=preGeneratedStamp||ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
   const title=`Review Radar \u00b7 ${cat.label}${curItem?' \u00b7 '+curItem:''}`;
@@ -3500,7 +3528,6 @@ async function shareReview(btn){
   // sharing without it. The photo (if any) is already baked into this composite image,
   // so it doesn't need to be shared separately.
   let result=preGeneratedFile;
-  const origHTML=btn.innerHTML;
   if(!result){
     btn.innerHTML='preparing image\u2026';
     const quoteEl=document.getElementById('conf-quote');
