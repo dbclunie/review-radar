@@ -101,7 +101,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 #new-cat-name:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #item-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #new-axis-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
-#conf-note-input:empty::before{content:attr(data-placeholder);color:#5f4419;pointer-events:none;font-style:italic}
+#conf-note-input:empty::before{content:attr(data-placeholder);color:#A8A49E;pointer-events:none;font-style:italic}
 #saved-reviews-search:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #map-search-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #new-cat-name.err::before{color:#E24B4A}
@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.67</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.68</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -349,9 +349,9 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div class="hdr"><span id="hdr-map-cat"></span><span>pin location</span></div>
   <div style="position:relative;margin-bottom:6px;flex-shrink:0">
     <div style="display:flex;gap:6px">
-      <div style="flex:1;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;padding:2px 8px">
+      <div style="flex:1;min-width:0;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;padding:2px 8px">
         <div id="map-search-input" contenteditable="true" role="textbox" data-placeholder="search for a place…"
-          style="font-family:'Special Elite',monospace;font-size:0.82em;color:#E8E6DE;outline:none;white-space:nowrap;overflow:hidden;background:transparent;padding-top:6px"
+          style="font-family:'Special Elite',monospace;font-size:0.82em;color:#E8E6DE;outline:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;background:transparent;padding-top:6px"
           oninput="handleMapSearchInput(this)"
           onkeydown="if(event.key==='Enter'){event.preventDefault();runMapSearch(this.textContent.trim());}"></div>
       </div>
@@ -373,20 +373,20 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div class="hdr" style="margin-bottom:4px"><span id="hdr-conf-cat"></span><span id="hdr-conf-mode"></span></div>
   <div id="conf-bars" style="margin-bottom:2px"></div>
   <div class="divider" style="margin:4px 0"></div>
-  <div id="conf-radar" style="margin:2px auto;max-height:150px;max-width:200px;overflow:hidden"></div>
+  <div id="conf-radar" style="margin:2px auto;max-width:200px"></div>
   <div class="divider" style="margin:4px 0"></div>
   <div id="conf-result"></div>
   <div id="conf-quote" style="font-size:0.72em;color:#A8A49E;line-height:1.4;font-style:italic;text-align:center;margin-top:4px"></div>
   <div id="conf-location" style="font-size:0.68em;color:#7A7670;text-align:center;margin-top:2px"></div>
-  <div id="conf-map-preview" style="display:none;height:100px;border-radius:6px;overflow:hidden;margin-top:4px;border:0.5px solid #33312C"></div>
+  <div id="conf-map-preview" style="display:none;height:85px;border-radius:6px;overflow:hidden;margin-top:4px;border:0.5px solid #33312C"></div>
 
-  <div id="conf-note-wrap" style="display:none;margin-top:6px">
-    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:6px 8px">
+  <div id="conf-note-wrap" style="display:none;margin-top:5px">
+    <div style="background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:5px 8px">
       <div id="conf-note-input" contenteditable="true" role="textbox" data-placeholder="a quick note to yourself..."
-        style="font-family:'Special Elite',monospace;font-size:0.78em;color:#E8E6DE;outline:none;background:transparent;min-height:2.2em;line-height:1.4"
+        style="font-family:'Special Elite',monospace;font-size:0.76em;color:#E8E6DE;outline:none;background:transparent;min-height:1.8em;line-height:1.35"
         oninput="handleConfNoteInput(this)"></div>
     </div>
-    <div id="conf-note-count" style="font-size:0.62em;color:#A8A49E;text-align:right;margin-top:2px">0/255</div>
+    <div id="conf-note-count" style="font-size:0.6em;color:#A8A49E;text-align:right;margin-top:1px">0/255</div>
   </div>
 
   <div style="display:flex;gap:8px;margin-top:6px">
