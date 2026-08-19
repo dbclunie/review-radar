@@ -162,7 +162,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.55</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.56</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -455,7 +455,8 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 <div id="backup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:20px">
   <div style="background:#1E1C18;border:0.5px solid #3A3833;border-radius:10px;padding:20px;max-width:320px;width:100%">
     <div style="color:#E8E6DE;font-size:1.05em;font-weight:bold;text-align:center;margin-bottom:4px">back up your reviews</div>
-    <div style="color:#A8A49E;font-size:0.78em;text-align:center;margin-bottom:16px;line-height:1.5">everything lives on this device only. export a backup so you never lose it.</div>
+    <div style="color:#A8A49E;font-size:0.78em;text-align:center;margin-bottom:6px;line-height:1.5">everything lives on this device only. export a backup so you never lose it.</div>
+    <div id="last-backup-line" style="text-align:center;font-size:0.72em;margin-bottom:14px"></div>
 
     <div tabindex="0" id="backup-export-btn" style="display:flex;align-items:center;gap:10px;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:10px;margin-bottom:10px;cursor:pointer" onclick="exportBackup()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -563,8 +564,29 @@ function exportBackup(){
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
   downloadBlob(blob,`review_radar_backup_${stamp}.json`);
-  bumpCounter('rr_backup_count'); evaluateAchievements();
+  bumpCounter('rr_backup_count');
+  const nowIso=new Date().toISOString();
+  if(!localStorage.getItem('rr_first_backup_at')) localStorage.setItem('rr_first_backup_at',nowIso);
+  localStorage.setItem('rr_last_backup_at',nowIso);
+  evaluateAchievements();
+  renderLastBackupLine();
   btnFeedback(document.getElementById('backup-export-btn'),'\u2713 downloaded','#97C459','#1a2e0a',2000);
+}
+
+function renderLastBackupLine(){
+  const el=document.getElementById('last-backup-line');
+  if(!el) return;
+  const lastAt=localStorage.getItem('rr_last_backup_at');
+  if(!lastAt){
+    el.textContent='you haven\u2019t backed up yet';
+    el.style.color='#c58a1e';
+    return;
+  }
+  const days=Math.floor((Date.now()-new Date(lastAt).getTime())/86400000);
+  if(days===0) el.textContent='last backed up today';
+  else if(days===1) el.textContent='last backed up yesterday';
+  else el.textContent=`last backed up ${days} days ago`;
+  el.style.color=days>=14?'#c58a1e':'#7A7670';
 }
 
 let pendingRestoreData=null;
@@ -694,6 +716,7 @@ function handleImportReviewFile(e){
 
 function openBackupModal(){
   document.getElementById('backup-modal').style.display='flex';
+  renderLastBackupLine();
 }
 function closeBackupModal(){
   document.getElementById('backup-modal').style.display='none';
