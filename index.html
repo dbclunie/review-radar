@@ -163,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.62</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.63</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -3309,18 +3309,44 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
     const locLabel='\uD83D\uDCCD '+(location.address||location.lat.toFixed(5)+', '+location.lng.toFixed(5));
     wrapTextH(ctx,locLabel,PAD,y,W-PAD*2,16);
   }
+  function dataUrlToBlobResult(dataUrl){
+    try{
+      const [meta,b64]=dataUrl.split(',');
+      const bin=atob(b64);
+      const arr=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+      return {blob:new Blob([arr],{type:'image/png'}),ext:'png',type:'image/png'};
+    }catch(e){
+      console.error('Review Radar: toDataURL fallback conversion failed —',e);
+      return null;
+    }
+  }
+
   return new Promise(res=>{
-    const giveUp=setTimeout(()=>{ console.warn('Review Radar: canvas.toBlob timed out after 5s'); res(null); },5000);
+    let settled=false;
+    const finish=(result)=>{
+      if(settled) return;
+      settled=true;
+      res(result);
+    };
+    const giveUp=setTimeout(()=>{
+      console.warn('Review Radar: canvas.toBlob timed out after 5s — trying toDataURL fallback');
+      try{ finish(dataUrlToBlobResult(canvas.toDataURL('image/png'))); }
+      catch(e){ console.error('Review Radar: toDataURL fallback also failed —',e); finish(null); }
+    },5000);
     try{
       canvas.toBlob(blob=>{
         clearTimeout(giveUp);
-        if(!blob) console.warn('Review Radar: canvas.toBlob resolved with no blob');
-        res(blob?{blob,ext:'png',type:'image/png'}:null);
+        if(blob){ finish({blob,ext:'png',type:'image/png'}); return; }
+        console.warn('Review Radar: canvas.toBlob resolved with no blob — trying toDataURL fallback');
+        try{ finish(dataUrlToBlobResult(canvas.toDataURL('image/png'))); }
+        catch(e){ console.error('Review Radar: toDataURL fallback also failed —',e); finish(null); }
       },'image/png');
     }catch(e){
       clearTimeout(giveUp);
-      console.error('Review Radar: canvas.toBlob threw synchronously —',e);
-      res(null);
+      console.error('Review Radar: canvas.toBlob threw synchronously —',e,'— trying toDataURL fallback');
+      try{ finish(dataUrlToBlobResult(canvas.toDataURL('image/png'))); }
+      catch(e2){ console.error('Review Radar: toDataURL fallback also failed —',e2); finish(null); }
     }
   });
 }
