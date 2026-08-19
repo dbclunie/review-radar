@@ -102,6 +102,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 #item-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #new-axis-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #conf-note-input:empty::before{content:attr(data-placeholder);color:#5f4419;pointer-events:none;font-style:italic}
+#saved-reviews-search:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #new-cat-name.err::before{color:#E24B4A}
 #new-cat-name.err{animation:blink-red .35s ease 2}
 @keyframes blink-red{0%,100%{border-color:#3A3833;background:#26241F}50%{border-color:#E24B4A;background:#3a1f1f}}
@@ -161,7 +162,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.54</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.55</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -177,6 +178,12 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div tabindex="0" class="btn" style="text-align:center" onclick="document.getElementById('new-cat-stars-box').classList.add('on');document.getElementById('new-cat-location-box').classList.remove('on');document.getElementById('new-cat-note-box').classList.remove('on');document.getElementById('cat-name-hint').textContent='';document.getElementById('new-cat-name').textContent='';newLocation=false;newNote=false;renderModeExamples();setMode('review');showScreen('s-addcat')">+category</div>
   </div>
   <div id="saved-reviews-label" style="font-size:1.125em;font-weight:bold;color:#A8A49E;margin-top:10px;flex-shrink:0;display:none;text-align:center">your reviews</div>
+  <div id="saved-reviews-search-wrap" style="display:none;margin-top:6px;flex-shrink:0;position:relative">
+    <div id="saved-reviews-search" contenteditable="true" role="textbox" data-placeholder="search by name…"
+      style="font-family:'Special Elite',monospace;font-size:0.82em;color:#E8E6DE;outline:none;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:6px 28px 6px 10px;white-space:nowrap;overflow:hidden"
+      oninput="handleReviewSearchInput(this)"></div>
+    <span id="saved-reviews-search-clear" onclick="clearReviewSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#7A7670;cursor:pointer;font-size:0.9em">\u2715</span>
+  </div>
   <div id="saved-reviews-filter" style="display:none;margin-top:6px;flex-shrink:0"></div>
   <div id="saved-reviews-avgstats" style="display:none;margin-top:4px;flex-shrink:0;text-align:center;font-size:0.72em;color:#7A7670"></div>
   <div id="saved-reviews-list" style="flex:1;overflow-y:auto;margin-top:4px"></div>
@@ -2570,16 +2577,20 @@ function renderSavedReviewsList(){
   const listEl=document.getElementById('saved-reviews-list');
   const labelEl=document.getElementById('saved-reviews-label');
   const filterEl=document.getElementById('saved-reviews-filter');
+  const searchWrap=document.getElementById('saved-reviews-search-wrap');
   if(!savedReviews.length){
     labelEl.style.display='none';
     filterEl.style.display='none';
+    searchWrap.style.display='none';
     listEl.innerHTML='';
     selectModeActive=false;
     selectedReviewIds.clear();
     reviewFilterCat=null;
+    reviewSearchQuery='';
     return;
   }
   labelEl.style.display='block';
+  searchWrap.style.display='block';
 
   // Build filter dropdown from unique categories in saved reviews
   const catIds=[...new Set(savedReviews.map(r=>r.catId))].sort();
@@ -2606,14 +2617,23 @@ function renderSavedReviewsList(){
   }
 
   // Filter then sort — most recent first
-  const filtered=reviewFilterCat
+  let filtered=reviewFilterCat
     ? savedReviews.filter(r=>r.catId===reviewFilterCat)
     : [...savedReviews];
+  if(reviewSearchQuery){
+    const q=reviewSearchQuery.toLowerCase();
+    filtered=filtered.filter(r=>(r.item||'').toLowerCase().includes(q));
+  }
   filtered.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
 
   renderAvgStatsLine(filtered);
 
   listEl.innerHTML='';
+
+  if(reviewSearchQuery && !filtered.length){
+    listEl.innerHTML=`<div style="text-align:center;color:#7A7670;font-size:0.85em;margin-top:30px">no reviews match "${reviewSearchQuery}"</div>`;
+    return;
+  }
 
   if(selectModeActive){
     const bar=document.createElement('div');
@@ -2685,6 +2705,19 @@ function renderSavedReviewsList(){
 
 let selectModeActive=false;
 let reviewFilterCat=null; // null = show all
+let reviewSearchQuery='';
+function handleReviewSearchInput(el){
+  reviewSearchQuery=el.textContent.trim();
+  document.getElementById('saved-reviews-search-clear').style.display=reviewSearchQuery?'block':'none';
+  renderSavedReviewsList();
+}
+function clearReviewSearch(){
+  const el=document.getElementById('saved-reviews-search');
+  el.textContent='';
+  reviewSearchQuery='';
+  document.getElementById('saved-reviews-search-clear').style.display='none';
+  renderSavedReviewsList();
+}
 let selectedReviewIds=new Set();
 function enterSelectMode(id){
   selectModeActive=true;
