@@ -103,6 +103,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 #new-axis-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #conf-note-input:empty::before{content:attr(data-placeholder);color:#5f4419;pointer-events:none;font-style:italic}
 #saved-reviews-search:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
+#map-search-input:empty::before{content:attr(data-placeholder);color:#7A7670;pointer-events:none}
 #new-cat-name.err::before{color:#E24B4A}
 #new-cat-name.err{animation:blink-red .35s ease 2}
 @keyframes blink-red{0%,100%{border-color:#3A3833;background:#26241F}50%{border-color:#E24B4A;background:#3a1f1f}}
@@ -162,7 +163,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.57</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.58</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -329,7 +330,19 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 <!-- SCREEN 4b: map pin picker -->
 <div class="screen" id="s-map">
   <div class="hdr"><span id="hdr-map-cat"></span><span>pin location</span></div>
-  <div style="font-size:0.75em;color:#A8A49E;margin-bottom:6px;text-align:center">drag the pin to where the review took place</div>
+  <div style="position:relative;margin-bottom:6px;flex-shrink:0">
+    <div style="display:flex;gap:6px">
+      <div style="flex:1;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;box-sizing:border-box;padding:2px 8px">
+        <div id="map-search-input" contenteditable="true" role="textbox" data-placeholder="search for a place…"
+          style="font-family:'Special Elite',monospace;font-size:0.82em;color:#E8E6DE;outline:none;white-space:nowrap;overflow:hidden;background:transparent;padding-top:6px"
+          oninput="handleMapSearchInput(this)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();runMapSearch(this.textContent.trim());}"></div>
+      </div>
+      <div tabindex="0" class="btn" style="flex-shrink:0;padding:0 12px" onclick="runMapSearch(document.getElementById('map-search-input').textContent.trim())">go</div>
+    </div>
+    <div id="map-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1E1C18;border:0.5px solid #3A3833;border-radius:6px;margin-top:4px;max-height:180px;overflow-y:auto;z-index:20"></div>
+  </div>
+  <div style="font-size:0.72em;color:#A8A49E;margin-bottom:6px;text-align:center">or drag the pin to where the review took place</div>
   <div id="map-container" style="flex:1;border-radius:8px;overflow:hidden;min-height:200px"></div>
   <div id="map-coords" style="font-size:0.7em;color:#7A7670;text-align:center;margin-top:6px">move the pin to set location</div>
   <div class="btn-row" style="flex-shrink:0;padding-top:10px">
@@ -1305,6 +1318,65 @@ async function reverseGeocode(lat,lng){
   }catch(e){ return null; }
 }
 
+// ── FORWARD SEARCH (same Nominatim service already used for reverse geocoding) ──
+let mapSearchDebounce=null;
+function handleMapSearchInput(el){
+  clearTimeout(mapSearchDebounce);
+  const q=el.textContent.trim();
+  if(q.length<3){
+    document.getElementById('map-search-results').style.display='none';
+    return;
+  }
+  // Debounce to stay well under Nominatim's usage-policy rate limit (max ~1 req/sec)
+  mapSearchDebounce=setTimeout(()=>runMapSearch(q),700);
+}
+
+let lastMapSearchResults=[];
+async function runMapSearch(query){
+  if(!query || query.length<3) return;
+  const resultsEl=document.getElementById('map-search-results');
+  resultsEl.style.display='block';
+  resultsEl.innerHTML='<div style="padding:10px;text-align:center;color:#7A7670;font-size:0.78em">searching…</div>';
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`;
+    const resp=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!resp.ok){ resultsEl.innerHTML='<div style="padding:10px;text-align:center;color:#E24B4A;font-size:0.78em">search failed \u2014 try again</div>'; return; }
+    const results=await resp.json();
+    lastMapSearchResults=results;
+    if(!results.length){
+      resultsEl.innerHTML='<div style="padding:10px;text-align:center;color:#7A7670;font-size:0.78em">no matches found</div>';
+      return;
+    }
+    resultsEl.innerHTML='';
+    results.forEach((r,i)=>{
+      const row=document.createElement('div');
+      row.tabIndex=0;
+      row.style.cssText=`padding:8px 10px;font-size:0.78em;color:#E8E6DE;cursor:pointer;border-bottom:${i<results.length-1?'0.5px solid #33312C':'none'}`;
+      row.textContent=r.display_name; // set via textContent, never innerHTML — safe against any characters in untrusted API data
+      row.onclick=()=>selectMapSearchResultByIndex(i);
+      resultsEl.appendChild(row);
+    });
+  }catch(e){
+    resultsEl.innerHTML='<div style="padding:10px;text-align:center;color:#E24B4A;font-size:0.78em">search failed \u2014 try again</div>';
+  }
+}
+
+function selectMapSearchResultByIndex(i){
+  const r=lastMapSearchResults[i];
+  if(!r) return;
+  selectMapSearchResult(parseFloat(r.lat),parseFloat(r.lon),r.display_name);
+}
+
+function selectMapSearchResult(lat,lng,label){
+  document.getElementById('map-search-results').style.display='none';
+  document.getElementById('map-search-input').textContent=label;
+  if(!leafletMap||!leafletMarker) return;
+  leafletMap.setView([lat,lng],16);
+  leafletMarker.setLatLng([lat,lng]);
+  mapPinLocation={lat,lng};
+  updateMapCoords(lat,lng);
+}
+
 function updateLocationDisplay(){
   const el=document.getElementById('conf-location');
   const mapEl=document.getElementById('conf-map-preview');
@@ -1387,6 +1459,8 @@ let mapPinLocation=null;
 
 function openMapPicker(){
   document.getElementById('hdr-map-cat').textContent=(curCat?curCat.label:'').toUpperCase();
+  document.getElementById('map-search-input').textContent='';
+  document.getElementById('map-search-results').style.display='none';
   showScreen('s-map');
   // Init map after screen is visible
   setTimeout(()=>{
