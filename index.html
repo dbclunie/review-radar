@@ -167,7 +167,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.80</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.81</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -1160,13 +1160,28 @@ function checkDuplicateItem(val){
   const hint=document.getElementById('dup-item-hint');
   const name=val.trim().toLowerCase();
   if(!name || !curCat){ hint.innerHTML=''; return; }
-  const match=savedReviews.find(r=>r.catId===curCat.id && (r.item||'').trim().toLowerCase()===name);
-  if(match){
+  const matches=savedReviews.filter(r=>r.catId===curCat.id && (r.item||'').trim().toLowerCase()===name);
+  if(!matches.length){ hint.innerHTML=''; return; }
+
+  if(matches.length===1){
+    const match=matches[0];
     const d=new Date(match.ts).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
     hint.innerHTML=`<span style="color:#c58a1e">you reviewed this before \u2014 ${d}, ${match.scoreText}</span> <span tabindex="0" style="color:#F2A623;text-decoration:underline;cursor:pointer" onclick="viewSavedReview('${match.id}')">view it</span>`;
-  } else {
-    hint.innerHTML='';
+    return;
   }
+
+  // multiple past reviews of the same item — show a non-destructive average, don't merge anything
+  const reviewMode=matches.filter(r=>r.mode==='review' && r.max);
+  let avgLabel;
+  if(reviewMode.length){
+    const sumTotal=reviewMode.reduce((s,r)=>s+r.total,0), sumMax=reviewMode.reduce((s,r)=>s+r.max,0);
+    avgLabel=`avg ${grade(sumTotal,sumMax).g}`;
+  } else {
+    const withIntensity=matches.filter(r=>r.intensity!=null);
+    avgLabel=withIntensity.length?`avg intensity ${(withIntensity.reduce((s,r)=>s+r.intensity,0)/withIntensity.length).toFixed(1)}`:'';
+  }
+  const mostRecentId=[...matches].sort((a,b)=>new Date(b.ts)-new Date(a.ts))[0].id;
+  hint.innerHTML=`<span style="color:#c58a1e">${matches.length} reviews of this${avgLabel?', '+avgLabel:''}</span> <span tabindex="0" style="color:#F2A623;text-decoration:underline;cursor:pointer" onclick="viewSavedReview('${mostRecentId}')">view latest</span>`;
 }
 
 function startDial(){
