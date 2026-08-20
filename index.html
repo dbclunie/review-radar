@@ -14,8 +14,8 @@ html,body{background:#1A1814;color:#E8E6DE;font-family:'Special Elite',monospace
 html{font-size:clamp(13px,2.6vmin,17px)}
 body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:clamp(0px,3vmin,32px);box-sizing:border-box}
 #app{width:100%;max-width:480px;height:100dvh;max-height:100dvh;background:#141412;border-radius:0;display:flex;flex-direction:column;padding:clamp(12px,3vmin,22px);padding-bottom:max(clamp(12px,3vmin,22px),env(safe-area-inset-bottom,12px));box-shadow:0 4px 24px rgba(0,0,0,0.4);box-sizing:border-box}
-@media(min-width:500px){#app{height:min(90vh,760px);width:min(94vw,560px);border-radius:clamp(0px,2vmin,16px)}}
-@media(min-width:900px){#app{height:min(92vh,820px);width:min(70vw,620px)}}
+@media(min-width:500px){#app{height:min(94vh,820px);width:min(97vw,760px);border-radius:clamp(0px,2vmin,16px)}}
+@media(min-width:900px){#app{height:min(94vh,900px);width:min(88vw,980px)}}
 @media(max-width:280px),(max-height:300px){html{font-size:13px}body{padding:0}#app{border-radius:0;height:100vh;height:100dvh;max-width:100%}}
 
 /* header */
@@ -167,7 +167,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.74</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.75</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -415,31 +415,30 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
 <!-- SCREEN 5b: view saved review (read-only) -->
 <div class="screen" id="s-view">
-  <div class="hdr" style="flex-shrink:0"><span id="hdr-view-cat"></span><span id="hdr-view-item"></span></div>
+  <div class="hdr" style="flex-shrink:0;margin-bottom:2px"><span id="hdr-view-cat"></span><span id="hdr-view-item"></span></div>
   <div id="view-scroll" style="flex:1;overflow-y:auto;min-height:0">
-    <div id="view-date" style="font-size:0.7em;color:#7A7670;margin-bottom:6px"></div>
-    <div id="view-bars" style="margin-bottom:4px"></div>
-    <div class="divider"></div>
-    <div id="view-radar" style="margin:4px 0"></div>
-    <div class="divider"></div>
+    <div id="view-date" style="font-size:0.65em;color:#7A7670;margin-bottom:3px"></div>
+    <div id="view-bars" style="margin-bottom:1px"></div>
+    <div class="divider" style="margin:3px 0"></div>
+    <div id="view-radar" style="margin:1px auto;max-width:170px"></div>
+    <div class="divider" style="margin:3px 0"></div>
     <div id="view-result"></div>
-    <div id="view-location" style="font-size:0.75em;text-align:center;margin-top:4px"></div>
-    <div id="view-map-preview" style="display:none;height:100px;border-radius:6px;overflow:hidden;margin-top:6px;border:0.5px solid #33312C"></div>
-    <div id="view-note" style="display:none;font-size:0.78em;color:#A8A49E;line-height:1.4;text-align:center;margin-top:8px;padding:6px 10px;background:#1A1814;border-radius:6px"></div>
-    <div id="view-photo-display" style="display:none;margin-top:10px;gap:6px;overflow-x:auto"></div>
+    <div id="view-location" style="font-size:0.68em;text-align:center;margin-top:2px"></div>
+    <div id="view-note" style="display:none;font-size:0.72em;color:#A8A49E;line-height:1.3;text-align:center;margin-top:4px;padding:4px 8px;background:#1A1814;border-radius:6px"></div>
+    <div id="view-photo-display" style="display:none;margin-top:5px;gap:6px;overflow-x:auto"></div>
   </div>
 
-  <div style="margin-top:6px;flex-shrink:0">
-    <button class="send-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px" onclick="shareViewedReview(this)">
+  <div style="margin-top:4px;flex-shrink:0">
+    <button class="send-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px" onclick="shareViewedReview(this)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#412402" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
       share
     </button>
   </div>
 
-  <div style="display:flex;gap:8px;margin-top:6px;flex-shrink:0">
-    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-cat')">back</div>
-    <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#F2A623" onclick="editSavedReview(viewingReviewId)">edit</div>
-    <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#E24B4A" onclick="showConfirmModal('Delete this review? This cannot be undone.',()=>deleteSavedReview(viewingReviewId))">delete</div>
+  <div style="display:flex;gap:8px;margin-top:4px;flex-shrink:0">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px" onclick="showScreen('s-cat')">back</div>
+    <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px;color:#F2A623" onclick="editSavedReview(viewingReviewId)">edit</div>
+    <div tabindex="0" class="btn" style="flex:1;text-align:center;padding:5px;color:#E24B4A" onclick="showConfirmModal('Delete this review? This cannot be undone.',()=>deleteSavedReview(viewingReviewId))">delete</div>
   </div>
 </div>
 
@@ -3082,25 +3081,6 @@ function viewSavedReview(id){
   } else {
     photoDisplay.style.display='none';
   }
-
-  // mini-map
-  const viewMapEl=document.getElementById('view-map-preview');
-  if(rec.location && viewMapEl){
-    viewMapEl.style.display='block';
-    setTimeout(()=>{
-      const pinIcon=L.divIcon({html:`<div style="width:14px;height:14px;background:#F2A623;border:2px solid #141412;border-radius:50% 50% 50% 0;transform:rotate(-45deg)"></div>`,iconSize:[14,14],iconAnchor:[7,14],className:''});
-      if(!viewMiniMap){
-        viewMiniMap=L.map(viewMapEl,{zoomControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false,attributionControl:false})
-          .setView([rec.location.lat,rec.location.lng],15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(viewMiniMap);
-        viewMiniMarker=L.marker([rec.location.lat,rec.location.lng],{icon:pinIcon}).addTo(viewMiniMap);
-      } else {
-        viewMiniMap.setView([rec.location.lat,rec.location.lng],15);
-        viewMiniMarker.setLatLng([rec.location.lat,rec.location.lng]);
-      }
-      viewMiniMap.invalidateSize();
-    },150);
-  } else if(viewMapEl){ viewMapEl.style.display='none'; }
 
   showScreen('s-view');
 }
