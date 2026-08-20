@@ -167,7 +167,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.79</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.80</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -511,6 +511,14 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       </div>
     </div>
 
+    <div tabindex="0" style="display:flex;align-items:center;gap:10px;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:10px;margin-bottom:10px;cursor:pointer" onclick="exportCSV()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#97C459" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+      <div>
+        <div style="color:#E8E6DE;font-size:0.85em">export as CSV</div>
+        <div style="color:#7A7670;font-size:0.68em">for spreadsheets — not usable for restore</div>
+      </div>
+    </div>
+
     <div tabindex="0" style="display:flex;align-items:center;gap:10px;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;padding:10px;cursor:pointer" onclick="triggerRestorePick()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A8A49E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <div>
@@ -616,6 +624,39 @@ function exportBackup(){
   evaluateAchievements();
   renderLastBackupLine();
   btnFeedback(document.getElementById('backup-export-btn'),'\u2713 downloaded','#97C459','#1a2e0a',2000);
+}
+
+function csvEscape(v){
+  if(v==null) return '';
+  const s=String(v);
+  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+
+function exportCSV(){
+  const headers=['date','category','item','mode','grade','total','max','intensity','harmony','stars','axes','location','note'];
+  const rows=savedReviews.map(r=>{
+    const axesStr=(r.axes||[]).map(a=>`${a}:${(r.scores&&r.scores[a])!=null?r.scores[a]:''}`).join('; ');
+    const loc=r.location?(r.location.address||`${r.location.lat},${r.location.lng}`):'';
+    return [
+      new Date(r.ts).toISOString().slice(0,10),
+      r.catLabel||r.catId,
+      r.item||'',
+      r.mode||'',
+      r.grade||'',
+      r.total!=null?r.total:'',
+      r.max!=null?r.max:'',
+      r.intensity!=null?r.intensity:'',
+      r.harmony!=null?r.harmony:'',
+      r.curStars!=null?r.curStars:'',
+      axesStr,
+      loc,
+      r.note||''
+    ].map(csvEscape).join(',');
+  });
+  const csv=[headers.join(','), ...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
+  downloadBlob(blob,`review_radar_export_${stamp}.csv`);
 }
 
 function renderLastBackupLine(){
