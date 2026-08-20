@@ -98,6 +98,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .mode-ex-text.expanded .clamp{display:block;-webkit-line-clamp:unset;overflow:visible}
 .mode-example.sel{border-color:#F2A623;box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
 .mode-example.unsel{opacity:0.8}
+#attach-preview-item.open{max-height:60px !important}
 .field-label{font-size:0.85em;color:#A8A49E;margin-bottom:4px}
 .field-input{width:100%;background:#26241F;border:0.5px solid #3A3833;border-radius:6px;color:#E8E6DE;font-family:'Special Elite',monospace;font-size:1em;padding:10px 9px 6px 9px;outline:none;box-sizing:border-box}
 #new-cat-name{font-size:1.125em;font-weight:bold;line-height:1.5;padding-top:20px !important;padding-bottom:12px !important;min-height:3.5em}
@@ -166,7 +167,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.73</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.74</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -318,6 +319,8 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       onkeydown="if(event.key==='Enter'){event.preventDefault();startDial();}"></div>
   </div>
   <div id="dup-item-hint" style="font-size:0.75em;text-align:center;margin-bottom:8px;min-height:1.1em"></div>
+  <div id="item-photo-badge" style="display:none;font-size:0.75em;color:#F2A623;text-align:center;margin-bottom:8px;cursor:pointer" onclick="document.getElementById('attach-preview-item').classList.toggle('open')">📷 <span id="item-photo-count"></span> attached</div>
+  <div id="attach-preview-item" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;max-height:0;transition:max-height .2s"></div>
   <div style="flex:1"></div>
   <div class="btn-row">
     <div tabindex="0" class="btn" style="flex:1" onclick="renderCatSelect();showScreen('s-cat')">back</div>
@@ -412,26 +415,28 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
 <!-- SCREEN 5b: view saved review (read-only) -->
 <div class="screen" id="s-view">
-  <div class="hdr"><span id="hdr-view-cat"></span><span id="hdr-view-item"></span></div>
-  <div id="view-date" style="font-size:0.7em;color:#7A7670;margin-bottom:6px"></div>
-  <div id="view-bars" style="margin-bottom:4px"></div>
-  <div class="divider"></div>
-  <div id="view-radar" style="margin:4px 0"></div>
-  <div class="divider"></div>
-  <div id="view-result"></div>
-  <div id="view-location" style="font-size:0.75em;text-align:center;margin-top:4px"></div>
-  <div id="view-map-preview" style="display:none;height:120px;border-radius:6px;overflow:hidden;margin-top:6px;border:0.5px solid #33312C"></div>
-  <div id="view-note" style="display:none;font-size:0.78em;color:#A8A49E;line-height:1.4;text-align:center;margin-top:8px;padding:6px 10px;background:#1A1814;border-radius:6px"></div>
-  <div id="view-photo-display" style="display:none;margin-top:10px;gap:6px;overflow-x:auto"></div>
+  <div class="hdr" style="flex-shrink:0"><span id="hdr-view-cat"></span><span id="hdr-view-item"></span></div>
+  <div id="view-scroll" style="flex:1;overflow-y:auto;min-height:0">
+    <div id="view-date" style="font-size:0.7em;color:#7A7670;margin-bottom:6px"></div>
+    <div id="view-bars" style="margin-bottom:4px"></div>
+    <div class="divider"></div>
+    <div id="view-radar" style="margin:4px 0"></div>
+    <div class="divider"></div>
+    <div id="view-result"></div>
+    <div id="view-location" style="font-size:0.75em;text-align:center;margin-top:4px"></div>
+    <div id="view-map-preview" style="display:none;height:100px;border-radius:6px;overflow:hidden;margin-top:6px;border:0.5px solid #33312C"></div>
+    <div id="view-note" style="display:none;font-size:0.78em;color:#A8A49E;line-height:1.4;text-align:center;margin-top:8px;padding:6px 10px;background:#1A1814;border-radius:6px"></div>
+    <div id="view-photo-display" style="display:none;margin-top:10px;gap:6px;overflow-x:auto"></div>
+  </div>
 
-  <div style="margin-top:8px">
-    <button class="send-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px" onclick="shareViewedReview(this)">
+  <div style="margin-top:6px;flex-shrink:0">
+    <button class="send-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px" onclick="shareViewedReview(this)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#412402" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
       share
     </button>
   </div>
 
-  <div style="display:flex;gap:8px;margin-top:8px">
+  <div style="display:flex;gap:8px;margin-top:6px;flex-shrink:0">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-cat')">back</div>
     <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#F2A623" onclick="editSavedReview(viewingReviewId)">edit</div>
     <div tabindex="0" class="btn" style="flex:1;text-align:center;color:#E24B4A" onclick="showConfirmModal('Delete this review? This cannot be undone.',()=>deleteSavedReview(viewingReviewId))">delete</div>
@@ -1024,6 +1029,7 @@ function pickCat(cat){
   document.getElementById('hdr-item-live').textContent='';
   document.getElementById('item-input').textContent='';
   document.getElementById('dup-item-hint').innerHTML='';
+  document.getElementById('item-photo-badge').style.display='none';
   showScreen('s-item');
 }
 
@@ -1058,9 +1064,28 @@ function editSavedReview(id){
   document.getElementById('item-screen-label').textContent=`edit this ${curCat.label} review`;
   document.getElementById('hdr-item-live').textContent=curItem;
   document.getElementById('item-input').textContent=curItem;
+  renderItemPhotoBadge();
 
   dialIdx=0;
   showScreen('s-item');
+}
+
+function renderItemPhotoBadge(){
+  const badge=document.getElementById('item-photo-badge');
+  const preview=document.getElementById('attach-preview-item');
+  if(!attachedPhotos.length){ badge.style.display='none'; preview.classList.remove('open'); preview.innerHTML=''; return; }
+  badge.style.display='block';
+  document.getElementById('item-photo-count').textContent=attachedPhotos.length;
+  preview.innerHTML='';
+  attachedPhotos.forEach(file=>{
+    const img=document.createElement('img');
+    img.style.cssText='width:40px;height:40px;object-fit:cover;border-radius:4px;border:0.5px solid #3A3833;cursor:pointer;flex-shrink:0';
+    const reader=new FileReader();
+    reader.onload=()=>{ img.src=reader.result; };
+    reader.readAsDataURL(file);
+    img.onclick=()=>window.open(img.src,'_blank');
+    preview.appendChild(img);
+  });
 }
 
 // Updates the existing record in place instead of creating a new one — used when editingReviewId is set.
