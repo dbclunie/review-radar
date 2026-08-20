@@ -167,7 +167,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.78</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.79</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -190,12 +190,12 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <span id="saved-reviews-search-clear" onclick="clearReviewSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#7A7670;cursor:pointer;font-size:0.9em">\u2715</span>
   </div>
   <div style="display:flex;gap:6px;margin-top:6px;flex-shrink:0">
-    <div id="saved-reviews-filter" style="display:none;flex:1"></div>
-    <select id="saved-reviews-sort" class="filter-select" style="flex-shrink:0" onchange="reviewSortMode=this.value;renderSavedReviewsList()">
-      <option value="recent">newest first</option>
-      <option value="oldest">oldest first</option>
-      <option value="grade-high">grade: high to low</option>
-      <option value="grade-low">grade: low to high</option>
+    <div id="saved-reviews-filter" style="display:none;flex:1;min-width:0"></div>
+    <select id="saved-reviews-sort" class="filter-select" style="flex-shrink:1;min-width:0;max-width:110px" onchange="reviewSortMode=this.value;renderSavedReviewsList()">
+      <option value="recent">newest</option>
+      <option value="oldest">oldest</option>
+      <option value="grade-high">grade ↓</option>
+      <option value="grade-low">grade ↑</option>
       <option value="alpha">A → Z</option>
     </select>
   </div>
