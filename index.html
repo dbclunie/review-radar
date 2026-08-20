@@ -14,7 +14,8 @@ html,body{background:#1A1814;color:#E8E6DE;font-family:'Special Elite',monospace
 html{font-size:clamp(13px,2.6vmin,17px)}
 body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:clamp(0px,3vmin,32px);box-sizing:border-box}
 #app{width:100%;max-width:480px;height:100dvh;max-height:100dvh;background:#141412;border-radius:0;display:flex;flex-direction:column;padding:clamp(12px,3vmin,22px);padding-bottom:max(clamp(12px,3vmin,22px),env(safe-area-inset-bottom,12px));box-shadow:0 4px 24px rgba(0,0,0,0.4);box-sizing:border-box}
-@media(min-width:500px){#app{height:min(90vh,760px);border-radius:clamp(0px,2vmin,16px)}}
+@media(min-width:500px){#app{height:min(90vh,760px);width:min(94vw,560px);border-radius:clamp(0px,2vmin,16px)}}
+@media(min-width:900px){#app{height:min(92vh,820px);width:min(70vw,620px)}}
 @media(max-width:280px),(max-height:300px){html{font-size:13px}body{padding:0}#app{border-radius:0;height:100vh;height:100dvh;max-width:100%}}
 
 /* header */
@@ -93,6 +94,8 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .star-compact .star-stack{gap:0}
 .star-icon{cursor:pointer}
 .mode-example{background:#1E1C18;border:1px solid #33312C;border-radius:8px;padding:8px 8px;display:flex;flex-direction:column;transition:border-color .15s,opacity .15s,box-shadow .15s;min-width:0;font-size:clamp(0.72em,3vw,0.9em)}
+.mode-ex-text .clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mode-ex-text.expanded .clamp{display:block;-webkit-line-clamp:unset;overflow:visible}
 .mode-example.sel{border-color:#F2A623;box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
 .mode-example.unsel{opacity:0.8}
 .field-label{font-size:0.85em;color:#A8A49E;margin-bottom:4px}
@@ -163,7 +166,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.72</span>
+  <span style="font-size:0.75em;color:#9AAE7E;text-align:right">v2.73</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -3757,8 +3760,10 @@ function renderModeExamples(){
       ${svg}
       <div style="border-top:0.5px solid #33312C;margin-top:5px"></div>
       <div style="margin-top:5px">${statsHTML}</div>
-      <div style="font-size:0.7em;color:#7A7670;line-height:1.5;margin-top:8px">${ex.def}</div>
-      <div style="font-size:0.7em;color:#A8A49E;line-height:1.5;margin-top:6px;font-style:italic">${ex.quote}</div>`;
+      <div class="mode-ex-text" onclick="event.stopPropagation();this.classList.toggle('expanded')" style="font-size:0.7em;color:#7A7670;line-height:1.4;margin-top:6px;cursor:pointer">
+        <span class="clamp">${ex.def}</span>
+        <span class="clamp" style="color:#A8A49E;font-style:italic;display:block;margin-top:4px">${ex.quote}</span>
+      </div>`;
   });
 }
 function addAxis(){
