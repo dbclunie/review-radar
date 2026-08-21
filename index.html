@@ -167,7 +167,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:#9AAE7E;text-align:right;cursor:pointer" onclick="openChangelog()">v2.86</span>
+  <span tabindex="0" style="font-size:0.75em;color:#9AAE7E;text-align:right;cursor:pointer" onclick="openChangelog()">v2.87</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -726,10 +726,10 @@ function renderStorageIndicator(){
   }catch(e){}
 
   const mb=bytes/(1024*1024);
-  const CEILING_MB=5; // conservative estimate — actual browser limit varies, often 5-10MB
+  const CEILING_MB=8; // realistic mid-estimate — true browser limit is unknowable from JS and varies (commonly 5-10MB); using the pessimistic floor here was making this look worse than it likely is
   const pct=Math.min(100,(mb/CEILING_MB)*100);
 
-  amountEl.textContent=`${mb.toFixed(1)} MB / ~${CEILING_MB}-10 MB`;
+  amountEl.textContent=`${mb.toFixed(1)} MB (est. ~${CEILING_MB}MB typical limit)`;
 
   let barColor, textColor, note;
   if(pct<60){
@@ -2274,6 +2274,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.87',notes:['storage bar was using the pessimistic low end of the estimate as the real ceiling, making it look nearly full too easily \u2014 fixed to use a more realistic estimate']},
 {v:'2.86',notes:['settings screen \u2014 backup modal renamed, added clear-all-data and version/changelog link']},
 {v:'2.85',notes:['self-serve achievement reset \u2014 no longer need to ask for it']},
 {v:'2.84',notes:['undo on delete \u2014 both single and bulk review deletes now show a 7s undo toast']},
