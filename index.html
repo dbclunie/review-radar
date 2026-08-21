@@ -167,7 +167,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:#D9CFAE;white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:#9AAE7E;text-align:right;cursor:pointer" onclick="openChangelog()">v2.87</span>
+  <span tabindex="0" style="font-size:0.75em;color:#9AAE7E;text-align:right;cursor:pointer" onclick="openChangelog()">v2.88</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -626,7 +626,7 @@ function loadRegistry(){
   return JSON.parse(JSON.stringify(DEFAULT_CATS));
 }
 function saveRegistry(reg){
-  try{ localStorage.setItem('rr_registry',JSON.stringify(reg)); }catch(e){}
+  try{ localStorage.setItem('rr_registry',JSON.stringify(reg)); }catch(e){ handleStorageWriteFailure(e); }
 }
 
 function loadSavedReviews(){
@@ -637,7 +637,30 @@ function loadSavedReviews(){
   return [];
 }
 function saveSavedReviews(list){
-  try{ localStorage.setItem('rr_saved',JSON.stringify(list)); }catch(e){}
+  try{ localStorage.setItem('rr_saved',JSON.stringify(list)); }catch(e){ handleStorageWriteFailure(e); }
+}
+
+function handleStorageWriteFailure(e){
+  console.error('Review Radar: localStorage write failed —',e);
+  const isQuota=e && (e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22);
+  showSaveFailedBanner(isQuota);
+}
+
+let saveFailedBannerShown=false;
+function showSaveFailedBanner(isQuota){
+  if(saveFailedBannerShown) return; // don't stack these — one is enough to get attention
+  saveFailedBannerShown=true;
+  const n=document.createElement('div');
+  n.style.cssText='position:fixed;top:0;left:0;right:0;background:#3a1414;border-bottom:2px solid #E24B4A;padding:12px 16px;z-index:260;display:flex;align-items:center;gap:10px;font-family:\'Special Elite\',monospace';
+  n.innerHTML=`
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div style="flex:1;color:#fff;font-size:0.75em;line-height:1.4">save failed${isQuota?' \u2014 you\u2019re out of local storage space':''}. what you just did may not have actually been saved. back up now, then free up room (remove old photos).</div>
+    <div tabindex="0" style="color:#412402;background:#E24B4A;border-radius:5px;padding:6px 10px;font-size:0.72em;font-weight:bold;cursor:pointer;flex-shrink:0">open settings</div>
+    <span tabindex="0" style="color:#ccc;cursor:pointer;font-size:1em;flex-shrink:0">\u2715</span>`;
+  const dismiss=()=>{ n.remove(); saveFailedBannerShown=false; };
+  n.querySelector('div[style*="cursor:pointer"]').onclick=()=>{ openBackupModal(); dismiss(); };
+  n.querySelector('span').onclick=dismiss;
+  document.body.appendChild(n);
 }
 
 // ── BACKUP / RESTORE ─────────────────────────────────────────────────────
@@ -2274,6 +2297,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.88',notes:['fixed a real silent-data-loss bug \u2014 if a save ever failed (e.g. out of storage), it failed completely silently before. now shows a clear banner and points you to back up']},
 {v:'2.87',notes:['storage bar was using the pessimistic low end of the estimate as the real ceiling, making it look nearly full too easily \u2014 fixed to use a more realistic estimate']},
 {v:'2.86',notes:['settings screen \u2014 backup modal renamed, added clear-all-data and version/changelog link']},
 {v:'2.85',notes:['self-serve achievement reset \u2014 no longer need to ask for it']},
