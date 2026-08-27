@@ -491,7 +491,17 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.96</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.97</span>
+</div>
+
+<!-- FIRST-RUN WELCOME -->
+<div id="welcome-page" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:400;flex-direction:column;padding:24px 20px;box-sizing:border-box;font-family:'Special Elite',monospace">
+  <div id="welcome-body" style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;justify-content:center;text-align:center"></div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0;flex-shrink:0" id="welcome-dots"></div>
+  <div class="btn-row" style="flex-shrink:0">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="finishWelcome()">skip</div>
+    <div tabindex="0" class="btn primary" style="flex:1;text-align:center" id="welcome-next" onclick="welcomeNext()">next</div>
+  </div>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -2946,6 +2956,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.97',notes:['first-run welcome — three quick screens explaining what the app does and the difference between score and character modes','ends by creating a starter category (movie or restaurant) so you are not staring at an empty list','only shows on a genuinely fresh install, and is skippable']},
 {v:'2.96',notes:['renamed ocean to aquatic','seven new themes: grassland, forest, tundra, spring, summer, fall, winter','all 10 preset themes verified to meet contrast standards for text and accents']},
 {v:'2.95',notes:['fixed confirm dialogs (like reset achievements) appearing behind full-screen pages instead of on top of them']},
 {v:'2.94',notes:['theme moved to its own page (from settings) so the custom color editor has room and nothing gets pushed off screen','streak calendar progression is now a single accent ramp varying only in strength, instead of mismatched colors','calendar day numbers now pick their color and outline from the actual cell color \u2014 fixes them being unreadable in light theme']},
@@ -2979,6 +2990,101 @@ const CHANGELOG=[
 {v:'2.27\u20132.32',notes:['full-month streak celebration screen']},
 {v:'2.0\u20132.26',notes:['early foundation \u2014 backup/restore, photo attachments, location tagging, category creation, share-to-image']}
 ];
+
+// ── FIRST-RUN WELCOME ─────────────────────────────────────────────────────
+const STARTER_CATEGORIES={
+  movie:{id:'movie',label:'movie',mode:'review',axes:['story','visuals','sound','direction','acting'],stars:true,useLocation:false,useNote:true},
+  restaurant:{id:'restaurant',label:'restaurant',mode:'review',axes:['food','service','value','atmosphere','cleanliness'],stars:true,useLocation:true,useNote:true}
+};
+let welcomeStep=0;
+let welcomeStarterPick='movie';
+
+function welcomeSlides(){
+  const sample=radarSVG(['story','visuals','sound','direction','acting'],
+    {story:5,visuals:4,sound:2,direction:4,acting:3});
+  return [
+    {
+      html:`<div style="font-size:1.3em;color:var(--accent);font-weight:bold;margin-bottom:10px">Review Radar</div>
+        <div style="max-width:260px;margin:0 auto 14px">${sample}</div>
+        <div style="color:var(--text-2);font-size:0.85em;line-height:1.6;max-width:320px;margin:0 auto">
+          rate anything across five things you care about, and see the shape it makes.</div>`
+    },
+    {
+      html:`<div style="color:var(--accent);font-size:1em;font-weight:bold;margin-bottom:12px">two ways to rate</div>
+        <div style="text-align:left;max-width:330px;margin:0 auto;color:var(--text-2);font-size:0.82em;line-height:1.6">
+          <div style="margin-bottom:12px"><span style="color:var(--text);font-weight:bold">score</span> \u2014 for things that can be better or worse. adds up to a total and a grade.
+          <span style="color:var(--text-4)">good for movies, restaurants, hotels.</span></div>
+          <div><span style="color:var(--text);font-weight:bold">character</span> \u2014 for things that are just <em>different</em>, not better. no grade, just a profile.
+          <span style="color:var(--text-4)">good for coffee, whiskey, perfume.</span></div>
+        </div>`
+    },
+    {
+      html:`<div style="color:var(--accent);font-size:1em;font-weight:bold;margin-bottom:6px">start with a category</div>
+        <div style="color:var(--text-4);font-size:0.78em;margin-bottom:14px">you can rename it or change the axes later</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap" id="welcome-starter-pick"></div>
+        <div id="welcome-starter-preview" style="color:var(--text-4);font-size:0.75em;margin-top:14px;line-height:1.5"></div>`
+    }
+  ];
+}
+
+function renderWelcome(){
+  const slides=welcomeSlides();
+  document.getElementById('welcome-body').innerHTML=slides[welcomeStep].html;
+  document.getElementById('welcome-dots').innerHTML=slides.map((_,i)=>
+    `<span style="width:6px;height:6px;border-radius:50%;background:${i===welcomeStep?'var(--accent)':'var(--border-2)'}"></span>`).join('');
+  document.getElementById('welcome-next').textContent=
+    welcomeStep===slides.length-1?'create it \u2192':'next';
+  if(welcomeStep===slides.length-1) renderWelcomeStarter();
+}
+
+function renderWelcomeStarter(){
+  const wrap=document.getElementById('welcome-starter-pick');
+  if(!wrap) return;
+  wrap.innerHTML=Object.values(STARTER_CATEGORIES).map(c=>
+    `<div tabindex="0" class="btn" style="padding:8px 14px;${c.id===welcomeStarterPick?'border-color:var(--accent);color:var(--accent)':''}" onclick="pickWelcomeStarter('${c.id}')">${c.label}</div>`
+  ).join('');
+  const cat=STARTER_CATEGORIES[welcomeStarterPick];
+  const prev=document.getElementById('welcome-starter-preview');
+  if(prev) prev.textContent=cat.axes.join(' \u00b7 ');
+}
+
+function pickWelcomeStarter(id){
+  welcomeStarterPick=id;
+  renderWelcomeStarter();
+}
+
+function welcomeNext(){
+  const slides=welcomeSlides();
+  if(welcomeStep<slides.length-1){
+    welcomeStep++;
+    renderWelcome();
+    return;
+  }
+  // final step — create the chosen starter category, unless one already exists
+  const cat={...STARTER_CATEGORIES[welcomeStarterPick]};
+  if(!registry.find(c=>c.id===cat.id)){
+    registry.push(cat);
+    saveRegistry(registry);
+  }
+  finishWelcome();
+}
+
+function finishWelcome(){
+  try{ localStorage.setItem('rr_welcomed','1'); }catch(e){}
+  document.getElementById('welcome-page').style.display='none';
+  renderCatSelect();
+  renderSavedReviewsList();
+}
+
+function maybeShowWelcome(){
+  let seen=false;
+  try{ seen=localStorage.getItem('rr_welcomed')==='1'; }catch(e){}
+  // Only greet a genuinely fresh install — never interrupt someone with existing data
+  if(seen || registry.length || savedReviews.length) return;
+  welcomeStep=0;
+  renderWelcome();
+  document.getElementById('welcome-page').style.display='flex';
+}
 
 function openThemePage(){
   renderThemePicker();
@@ -5154,6 +5260,7 @@ setMode('review');
 renderCatSelect();
 renderSavedReviewsList();
 evaluateAchievements(); // catches pure time-elapsed milestones (e.g. backup longevity) on every load
+maybeShowWelcome();
 
 // Nudge once per session if backups are stale (or never done) and there's real data to protect
 if(savedReviews.length>=5){
