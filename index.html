@@ -491,7 +491,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.98</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.99</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3143,6 +3143,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.99',notes:['pending reviews now sort to the top and can be filtered with a pending only option','sharing is blocked on a pending review until you finish it']},
 {v:'2.98',notes:['new per-category expectations option — rate what you expect before, then the real thing after','asks which pass you are doing, but only for categories with the option enabled','expectation-only reviews stay pending in your list until completed; tap one to finish it','optional calendar reminder (.ics) when you save expectations','completed reviews overlay both radars and show whether reality beat expectations','pending reviews are excluded from streaks, achievements and averages until finished']},
 {v:'2.97',notes:['first-run welcome — three quick screens explaining what the app does and the difference between score and character modes','ends by creating a starter category (movie or restaurant) so you are not staring at an empty list','only shows on a genuinely fresh install, and is skippable']},
 {v:'2.96',notes:['renamed ocean to aquatic','seven new themes: grassland, forest, tundra, spring, summer, fall, winter','all 10 preset themes verified to meet contrast standards for text and accents']},
@@ -4005,7 +4006,8 @@ function renderSavedReviewsList(){
 
   // Build filter dropdown from unique categories in saved reviews
   const catIds=[...new Set(savedReviews.map(r=>r.catId))].sort();
-  if(catIds.length>1){
+  const hasPending=savedReviews.some(r=>r.pending);
+  if(catIds.length>1 || hasPending){
     filterEl.style.display='block';
     filterEl.innerHTML='';
     const sel=document.createElement('select');
@@ -4014,6 +4016,12 @@ function renderSavedReviewsList(){
     allOpt.value=''; allOpt.textContent='all categories';
     if(reviewFilterCat===null) allOpt.selected=true;
     sel.appendChild(allOpt);
+    if(hasPending){
+      const pOpt=document.createElement('option');
+      pOpt.value='__pending__'; pOpt.textContent='pending only';
+      if(reviewFilterCat==='__pending__') pOpt.selected=true;
+      sel.appendChild(pOpt);
+    }
     catIds.forEach(cid=>{
       const label=savedReviews.find(r=>r.catId===cid)?.catLabel||cid;
       const opt=document.createElement('option');
@@ -4028,9 +4036,9 @@ function renderSavedReviewsList(){
   }
 
   // Filter then sort — most recent first
-  let filtered=reviewFilterCat
-    ? savedReviews.filter(r=>r.catId===reviewFilterCat)
-    : [...savedReviews];
+  let filtered=reviewFilterCat==='__pending__'
+    ? savedReviews.filter(r=>r.pending)
+    : (reviewFilterCat ? savedReviews.filter(r=>r.catId===reviewFilterCat) : [...savedReviews]);
   if(reviewSearchQuery){
     const q=reviewSearchQuery.toLowerCase();
     filtered=filtered.filter(r=>(r.item||'').toLowerCase().includes(q));
@@ -4043,7 +4051,9 @@ function renderSavedReviewsList(){
       const diff=scoreOf(b)-scoreOf(a);
       return reviewSortMode==='grade-high'?diff:-diff;
     }
-    return new Date(b.ts)-new Date(a.ts); // 'recent' default
+    // default sort: pending first (they're actionable), then most recent
+    if(a.pending!==b.pending) return a.pending?-1:1;
+    return new Date(b.ts)-new Date(a.ts);
   });
 
   renderAvgStatsLine(filtered);
@@ -4378,6 +4388,10 @@ async function withViewRecord(fn){
 
 async function shareViewedReview(btn){
   await withViewRecord(async rec=>{
+    if(rec.pending){
+      btnFeedback(btn,'finish the review first','var(--text-5)','var(--text)',2200);
+      return;
+    }
     const origHTML=btn.innerHTML;
     // Some older saved reviews may have been created before their address resolved.
     // Fix it now, and persist it so future shares of this same review don't repeat the wait.
