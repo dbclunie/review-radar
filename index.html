@@ -287,7 +287,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.94</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.95</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -639,7 +639,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- BACKUP / RESTORE MODAL -->
-<div id="backup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:20px">
+<div id="backup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:450;align-items:center;justify-content:center;padding:20px">
   <div style="background:var(--surface);border:0.5px solid var(--border-2);border-radius:10px;padding:20px;max-width:320px;width:100%">
     <div style="color:var(--text);font-size:1.05em;font-weight:bold;text-align:center;margin-bottom:4px">settings & backup</div>
     <div style="color:var(--text-2);font-size:0.78em;text-align:center;margin-bottom:6px;line-height:1.5">everything lives on this device only. export a backup so you never lose it.</div>
@@ -712,7 +712,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- CONFIRM DELETE MODAL -->
-<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:20px">
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;padding:20px">
   <div style="background:var(--surface);border:0.5px solid var(--border-2);border-radius:10px;padding:20px;max-width:340px;width:100%">
     <div id="confirm-modal-text" style="font-size:0.95em;color:var(--text);margin-bottom:18px;text-align:center;line-height:1.5"></div>
     <div style="display:flex;gap:8px">
@@ -2728,6 +2728,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.95',notes:['fixed confirm dialogs (like reset achievements) appearing behind full-screen pages instead of on top of them']},
 {v:'2.94',notes:['theme moved to its own page (from settings) so the custom color editor has room and nothing gets pushed off screen','streak calendar progression is now a single accent ramp varying only in strength, instead of mismatched colors','calendar day numbers now pick their color and outline from the actual cell color \u2014 fixes them being unreadable in light theme']},
 {v:'2.93',notes:['theme settings now included in backups (and restored from them)','custom theme shows a live contrast warning if your colors would be hard to read','theme buttons show color swatches so you can preview before switching']},
 {v:'2.92',notes:['custom theme \u2014 pick your own background, text, accent, positive and negative colors; the rest of the palette derives from them automatically','on-accent text color is chosen by measured contrast so button labels stay readable on any accent you pick']},
