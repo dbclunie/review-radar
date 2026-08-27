@@ -287,7 +287,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.91</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.92</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -675,6 +675,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div style="height:16px"></div>
     <div style="color:var(--text-4);font-size:0.68em;text-align:center;margin-bottom:8px;letter-spacing:0.5px">THEME</div>
     <div id="theme-picker" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
+    <div id="custom-theme-editor" style="display:none;margin-top:10px;background:var(--surface);border:0.5px solid var(--border-2);border-radius:6px;padding:10px"></div>
 
     <div style="height:16px"></div>
     <div style="color:var(--text-4);font-size:0.68em;text-align:center;margin-bottom:8px;letter-spacing:0.5px">DANGER ZONE</div>
@@ -738,8 +739,106 @@ const THEMES=[
   {id:'dark',label:'dark'},
   {id:'light',label:'light'},
   {id:'ocean',label:'ocean'},
-  {id:'desert',label:'desert'}
+  {id:'desert',label:'desert'},
+  {id:'custom',label:'custom'}
 ];
+
+// A custom theme only asks for a few meaningful choices; the rest of the ~26 tokens
+// are derived from them by lightening/darkening, so users don't have to pick 26 colors.
+const CUSTOM_ROLES=[
+  {key:'bg',    label:'background', def:'#141412'},
+  {key:'text',  label:'text',       def:'#E8E6DE'},
+  {key:'accent',label:'accent',     def:'#F2A623'},
+  {key:'good',  label:'positive',   def:'#97C459'},
+  {key:'bad',   label:'negative',   def:'#E24B4A'}
+];
+
+function getCustomTheme(){
+  try{
+    const s=localStorage.getItem('rr_custom_theme');
+    if(s) return {...defaultCustomTheme(),...JSON.parse(s)};
+  }catch(e){}
+  return defaultCustomTheme();
+}
+function defaultCustomTheme(){
+  const o={};
+  CUSTOM_ROLES.forEach(r=>o[r.key]=r.def);
+  return o;
+}
+function saveCustomTheme(obj){
+  try{ localStorage.setItem('rr_custom_theme',JSON.stringify(obj)); }catch(e){}
+}
+
+// mix two hex colors; amt 0 = a, 1 = b
+function mixHex(a,b,amt){
+  const pa=[1,3,5].map(i=>parseInt(a.slice(i,i+2),16));
+  const pb=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16));
+  const out=pa.map((v,i)=>Math.round(v+(pb[i]-v)*amt));
+  return '#'+out.map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+function relLuminance(hex){
+  const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
+  const [r,g,b]=rgb.map(v=>v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4));
+  return 0.2126*r+0.7152*g+0.0722*b;
+}
+function contrastRatioHex(a,b){
+  const l1=relLuminance(a),l2=relLuminance(b);
+  return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+}
+// Pick whichever of a near-black / near-white reads better on the given background,
+// rather than guessing from a fixed luminance cutoff (which failed on mid-tone accents).
+function bestContrastOn(bg){
+  const dark='#14100a', light='#fffdf7';
+  return contrastRatioHex(dark,bg)>=contrastRatioHex(light,bg)?dark:light;
+}
+
+// Build the full token set from the handful of user-chosen roles.
+function deriveCustomTokens(cfg){
+  const bg=cfg.bg, text=cfg.text, accent=cfg.accent;
+  const isLightBg=relLuminance(bg)>0.4;
+  const towardText=(amt)=>mixHex(bg,text,amt);
+  // on light backgrounds, "raised" surfaces read better lighter than the page;
+  // on dark backgrounds they read better slightly lighter too — but the mix target differs.
+  const surfaceTarget=isLightBg?'#ffffff':text;
+  return {
+    '--bg':bg,
+    '--bg-deep':mixHex(bg,isLightBg?'#000000':'#000000',isLightBg?0.05:0.35),
+    '--surface':mixHex(bg,surfaceTarget,isLightBg?0.55:0.05),
+    '--surface-2':mixHex(bg,surfaceTarget,isLightBg?0.35:0.10),
+    '--border':towardText(0.14),
+    '--border-2':towardText(0.20),
+    '--border-3':towardText(0.30),
+    '--text':text,
+    '--text-2':towardText(0.72),
+    '--text-3':towardText(0.60),
+    '--text-4':towardText(0.50),
+    '--text-5':towardText(0.34),
+    '--text-dim-amber':mixHex(bg,accent,0.45),
+    '--accent':accent,
+    '--accent-light':mixHex(accent,isLightBg?'#000000':'#ffffff',0.45),
+    '--accent-dark':mixHex(accent,'#000000',0.25),
+    '--on-accent':bestContrastOn(accent),
+    '--good':cfg.good,
+    '--good-dark':mixHex(cfg.good,'#000000',0.3),
+    '--bad':cfg.bad,
+    '--bad-bg':mixHex(bg,cfg.bad,0.22),
+    '--star':mixHex(accent,'#ffd83a',0.5),
+    '--header-accent':mixHex(accent,text,0.35),
+    '--header-bg':mixHex(bg,accent,0.10),
+    '--header-text':towardText(0.85),
+    '--overlay-bg':mixHex(bg,'#000000',0.4)
+  };
+}
+
+function applyCustomTokens(){
+  const tokens=deriveCustomTokens(getCustomTheme());
+  const root=document.documentElement;
+  Object.entries(tokens).forEach(([k,v])=>root.style.setProperty(k,v));
+}
+function clearCustomTokens(){
+  const root=document.documentElement;
+  Object.keys(deriveCustomTokens(defaultCustomTheme())).forEach(k=>root.style.removeProperty(k));
+}
 
 function getSavedTheme(){
   try{ return localStorage.getItem('rr_theme')||'auto'; }catch(e){ return 'auto'; }
@@ -753,6 +852,12 @@ function resolveTheme(id){
 
 function applyTheme(id){
   const resolved=resolveTheme(id);
+  if(resolved==='custom'){
+    document.documentElement.removeAttribute('data-theme');
+    applyCustomTokens();
+    return;
+  }
+  clearCustomTokens(); // drop any inline custom overrides when switching to a preset
   // 'dark' is the default :root palette, so it needs no attribute
   if(resolved==='dark') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme',resolved);
@@ -768,6 +873,24 @@ function setTheme(id){
   if(typeof renderModeExamples==='function') renderModeExamples();
 }
 
+function setCustomRole(key,value){
+  const cfg=getCustomTheme();
+  cfg[key]=value;
+  saveCustomTheme(cfg);
+  if(getSavedTheme()==='custom'){
+    applyCustomTokens();
+    if(typeof renderCatSelect==='function') renderCatSelect();
+    if(typeof renderSavedReviewsList==='function') renderSavedReviewsList();
+    if(typeof renderModeExamples==='function') renderModeExamples();
+  }
+}
+
+function resetCustomTheme(){
+  saveCustomTheme(defaultCustomTheme());
+  renderThemePicker();
+  if(getSavedTheme()==='custom') applyCustomTokens();
+}
+
 function renderThemePicker(){
   const wrap=document.getElementById('theme-picker');
   if(!wrap) return;
@@ -775,6 +898,19 @@ function renderThemePicker(){
   wrap.innerHTML=THEMES.map(t=>
     `<div tabindex="0" class="btn" style="padding:6px 10px;font-size:0.75em;${t.id===current?'border-color:var(--accent);color:var(--accent)':''}" onclick="setTheme('${t.id}')">${t.label}</div>`
   ).join('');
+
+  const editor=document.getElementById('custom-theme-editor');
+  if(!editor) return;
+  if(current!=='custom'){ editor.style.display='none'; return; }
+  editor.style.display='block';
+  const cfg=getCustomTheme();
+  editor.innerHTML=CUSTOM_ROLES.map(r=>`
+    <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:0.75em;color:var(--text-2)">
+      <span>${r.label}</span>
+      <input type="color" value="${cfg[r.key]}" oninput="setCustomRole('${r.key}',this.value)"
+        style="width:44px;height:26px;border:0.5px solid var(--border-2);border-radius:4px;background:var(--surface-2);cursor:pointer;padding:2px">
+    </label>`).join('')
+    + `<div tabindex="0" class="btn" style="width:100%;text-align:center;padding:5px;font-size:0.72em;margin-top:4px" onclick="resetCustomTheme()">reset custom colors</div>`;
 }
 
 // Follow the OS in real time while in 'auto' mode
@@ -2509,6 +2645,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.92',notes:['custom theme \u2014 pick your own background, text, accent, positive and negative colors; the rest of the palette derives from them automatically','on-accent text color is chosen by measured contrast so button labels stay readable on any accent you pick']},
 {v:'2.91',notes:['theme support \u2014 match device (light/dark), plus ocean and desert palettes, in settings','entire app converted to use theme tokens: 430+ hardcoded colors replaced, including generated radar charts and share images']},
 {v:'2.90',notes:['removed the always-visible storage bar \u2014 with reviews now on real device storage it would just say "plenty of room" forever for almost everyone. usage is now only measured and shown at the moment a save actually fails, when it\u2019s actually relevant']},
 {v:'2.89',notes:['reviews (and photos) now stored in IndexedDB instead of localStorage \u2014 no more small fixed ceiling, bounded by real device storage instead','storage bar now shows real usage/quota where the browser supports it, not a guess','existing data migrates automatically, one time, with nothing lost']},
