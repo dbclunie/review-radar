@@ -491,7 +491,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.99</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.00</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -1149,7 +1149,9 @@ function applyTheme(id){
 
 function setTheme(id){
   try{ localStorage.setItem('rr_theme',id); }catch(e){}
+  markThemeTried(id==='auto'?resolveTheme('auto'):id);
   applyTheme(id);
+  evaluateAchievements();
   renderThemePicker();
   // canvas-drawn things (radar, calendar) read colors at draw time — redraw what's visible
   if(typeof renderCatSelect==='function') renderCatSelect();
@@ -1158,6 +1160,7 @@ function setTheme(id){
 }
 
 function setCustomRole(key,value){
+  markThemeTried('custom');
   const cfg=getCustomTheme();
   cfg[key]=value;
   saveCustomTheme(cfg);
@@ -1433,6 +1436,7 @@ function exportCSV(){
   const blob=new Blob([csv],{type:'text/csv'});
   const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
   downloadBlob(blob,`review_radar_export_${stamp}.csv`);
+  bumpCounter('rr_csv_export_count'); evaluateAchievements();
 }
 
 function renderLastBackupLine(){
@@ -2614,6 +2618,7 @@ function addPendingReminder(){
     'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY',`DESCRIPTION:${title}`,'END:VALARM',
     'END:VEVENT','END:VCALENDAR'
   ].join('\r\n');
+  bumpCounter('rr_reminder_count'); evaluateAchievements();
   downloadBlob(new Blob([ics],{type:'text/calendar'}),`review_radar_reminder_${(rec.item||'review').replace(/[^a-z0-9]+/gi,'_').slice(0,30)}.ics`);
 }
 
@@ -2917,6 +2922,27 @@ const ACHIEVEMENT_DEFS=[
 {"id":"midnight-straddle","title":"Midnight Straddle","description":"Save one review right before midnight and another right after.","checkType":"midnight_straddle","threshold":1},
 
 {"id":"secret-found","title":"You Found It","description":"Discover the secret achievements page for the first time.","checkType":"page_opened","threshold":1},
+{"id":"expect-first","title":"Best Laid Plans","description":"Complete your first expectation \u2192 actual pair.","checkType":"expect_pairs_completed","threshold":1},
+{"id":"expect-pairs-25","title":"Forward Thinker","description":"Save 25 expectation reviews.","checkType":"expect_saved_total","threshold":25},
+{"id":"expect-surprised","title":"Pleasantly Surprised","description":"Reality beat your expectations by 5 or more points.","checkType":"expect_beat_by","threshold":5},
+{"id":"expect-letdown","title":"Let Down","description":"Reality fell 5 or more points short of expectations.","checkType":"expect_short_by","threshold":5},
+{"id":"expect-called-it","title":"Called It","description":"Nail it \u2014 expected and actual totals match exactly.","checkType":"expect_exact_match","threshold":1},
+{"id":"expect-calibrated","title":"Perfectly Calibrated","description":"5 completed pairs where you were within 2 points each time.","checkType":"expect_close_calls","threshold":5},
+{"id":"expect-optimist","title":"Eternal Optimist","description":"10 reviews where your expectations were higher than reality.","checkType":"expect_overshoot_count","threshold":10},
+{"id":"expect-lowbar","title":"Low Bar","description":"10 reviews where reality came in above your expectations.","checkType":"expect_undershoot_count","threshold":10},
+{"id":"expect-pending-5","title":"Unfinished Business","description":"Have 5 pending reviews waiting at once.","checkType":"pending_at_once","threshold":5},
+{"id":"expect-closure","title":"Closure","description":"Finish a pending review 30+ days after saving expectations.","checkType":"pending_aged_days","threshold":30},
+{"id":"theme-change","title":"Redecorating","description":"Change your theme for the first time.","checkType":"themes_tried","threshold":2},
+{"id":"theme-seasons","title":"Seasonal Affective","description":"Try all four season themes.","checkType":"theme_group_seasons","threshold":4},
+{"id":"theme-biomes","title":"Naturalist","description":"Try all three biome themes.","checkType":"theme_group_biomes","threshold":3},
+{"id":"theme-custom","title":"Interior Designer","description":"Build your own custom theme.","checkType":"custom_theme_used","threshold":1},
+{"id":"theme-all","title":"Chameleon","description":"Try all ten preset themes.","checkType":"themes_tried","threshold":10},
+{"id":"csv-export","title":"Spreadsheet Enjoyer","description":"Export your reviews as a CSV.","checkType":"csv_export_count","threshold":1},
+{"id":"undo-delete","title":"Second Thoughts","description":"Undo a deletion.","checkType":"undo_count","threshold":1},
+{"id":"reminder-set","title":"Reminder Set","description":"Add a pending review to your calendar.","checkType":"reminder_count","threshold":1},
+{"id":"changelog-read","title":"Well Read","description":"Read the changelog.","checkType":"changelog_opened","threshold":1},
+{"id":"photos-3","title":"Shutterbug","description":"Attach 3 or more photos to one review.","checkType":"max_photos_one_review","threshold":3},
+{"id":"photos-5","title":"Photo Essay","description":"Attach 5 or more photos to one review.","checkType":"max_photos_one_review","threshold":5},
 {"id":"gesture-first-discovery","title":"What do we have here...","description":"Draw a V shape near the calendar, even by accident.","checkType":"v_shape_drawn","threshold":1},
 {"id":"backup-days-3","title":"Backup Beginner","description":"3 days since your first backup.","checkType":"days_since_first_backup","threshold":3},
 {"id":"backup-days-5","title":"Getting Cautious","description":"5 days since your first backup.","checkType":"days_since_first_backup","threshold":5},
@@ -2960,6 +2986,62 @@ function setMaxCounter(key,val){
 }
 
 // ── GENERIC EVALUATION ENGINE ─────────────────────────────────────────────
+// Derived from stored records, so these work retroactively on existing data.
+function computeExpectationStats(){
+  const pairs=savedReviews.filter(r=>!r.pending && r.expectedScores && r.scores);
+  const sum=(o,axes)=>axes.reduce((s,a)=>s+(o[a]||0),0);
+  let beatBy=0, shortBy=0, exact=0, close=0, over=0, under=0, agedDays=0;
+  pairs.forEach(r=>{
+    const exp=sum(r.expectedScores,r.axes), act=sum(r.scores,r.axes);
+    const diff=act-exp;
+    if(diff>beatBy) beatBy=diff;
+    if(-diff>shortBy) shortBy=-diff;
+    if(diff===0) exact++;
+    if(Math.abs(diff)<=2) close++;
+    if(diff<0) over++;   // expected more than reality delivered
+    if(diff>0) under++;  // reality beat expectations
+    if(r.completedAt){
+      const days=Math.floor((new Date(r.completedAt)-new Date(r.ts))/86400000);
+      if(days>agedDays) agedDays=days;
+    }
+  });
+  return {
+    expectPairsCompleted:pairs.length,
+    expectSavedTotal:savedReviews.filter(r=>r.expectedScores).length,
+    expectBeatBy:beatBy,
+    expectShortBy:shortBy,
+    expectExactMatch:exact,
+    expectCloseCalls:close,
+    expectOvershoot:over,
+    expectUndershoot:under,
+    pendingAgedDays:agedDays
+  };
+}
+
+const SEASON_THEMES=['spring','summer','fall','winter'];
+const BIOME_THEMES=['grassland','forest','tundra'];
+function getThemesTried(){
+  try{ return JSON.parse(localStorage.getItem('rr_themes_tried')||'[]'); }catch(e){ return []; }
+}
+function markThemeTried(id){
+  try{
+    const seen=getThemesTried();
+    if(!seen.includes(id)){
+      seen.push(id);
+      localStorage.setItem('rr_themes_tried',JSON.stringify(seen));
+    }
+  }catch(e){}
+}
+function computeThemeStats(){
+  const tried=getThemesTried();
+  return {
+    themesTried:tried.filter(t=>t!=='auto'&&t!=='custom').length,
+    themeGroupSeasons:SEASON_THEMES.filter(t=>tried.includes(t)).length,
+    themeGroupBiomes:BIOME_THEMES.filter(t=>tried.includes(t)).length,
+    customThemeUsed:tried.includes('custom')
+  };
+}
+
 function computeAchievementStats(){
   const now=new Date();
   const byCat={}, dayReviewCounts={}, hoursSeen=new Set(), weekdaysSeen=new Set();
@@ -3042,6 +3124,14 @@ function computeAchievementStats(){
     gestureFastestMs:getCounter('rr_gesture_fastest_ms'),
     gestureMaxBboxPct:getCounter('rr_gesture_max_bbox_pct'),
     vShapeDrawn:getCounter('rr_v_shape_count')>0,
+    ...computeExpectationStats(),
+    ...computeThemeStats(),
+    csvExportCount:getCounter('rr_csv_export_count'),
+    undoCount:getCounter('rr_undo_count'),
+    reminderCount:getCounter('rr_reminder_count'),
+    changelogOpened:getCounter('rr_changelog_opened'),
+    maxPhotosOneReview:savedReviews.reduce((m,r)=>Math.max(m,(r.photoDataUrls||[]).length),0),
+    pendingAtOnce:savedReviews.filter(r=>r.pending).length,
     daysSinceFirstBackup:(()=>{
       const t=localStorage.getItem('rr_first_backup_at');
       return t?Math.floor((Date.now()-new Date(t).getTime())/86400000):-1;
@@ -3115,6 +3205,25 @@ function evaluateAchievements(){
       case 'page_opened': met=stats.pageOpened; break;
       case 'gesture_success_count': met=stats.gestureSuccessCount>=def.threshold; break;
       case 'v_shape_drawn': met=stats.vShapeDrawn; break;
+      case 'expect_pairs_completed': met=stats.expectPairsCompleted>=def.threshold; break;
+      case 'expect_saved_total': met=stats.expectSavedTotal>=def.threshold; break;
+      case 'expect_beat_by': met=stats.expectBeatBy>=def.threshold; break;
+      case 'expect_short_by': met=stats.expectShortBy>=def.threshold; break;
+      case 'expect_exact_match': met=stats.expectExactMatch>=def.threshold; break;
+      case 'expect_close_calls': met=stats.expectCloseCalls>=def.threshold; break;
+      case 'expect_overshoot_count': met=stats.expectOvershoot>=def.threshold; break;
+      case 'expect_undershoot_count': met=stats.expectUndershoot>=def.threshold; break;
+      case 'pending_at_once': met=stats.pendingAtOnce>=def.threshold; break;
+      case 'pending_aged_days': met=stats.pendingAgedDays>=def.threshold; break;
+      case 'themes_tried': met=stats.themesTried>=def.threshold; break;
+      case 'theme_group_seasons': met=stats.themeGroupSeasons>=def.threshold; break;
+      case 'theme_group_biomes': met=stats.themeGroupBiomes>=def.threshold; break;
+      case 'custom_theme_used': met=stats.customThemeUsed; break;
+      case 'csv_export_count': met=stats.csvExportCount>=def.threshold; break;
+      case 'undo_count': met=stats.undoCount>=def.threshold; break;
+      case 'reminder_count': met=stats.reminderCount>=def.threshold; break;
+      case 'changelog_opened': met=stats.changelogOpened>=def.threshold; break;
+      case 'max_photos_one_review': met=stats.maxPhotosOneReview>=def.threshold; break;
       case 'days_since_first_backup': met=stats.daysSinceFirstBackup>=def.threshold; break;
       case 'gesture_fail_count': met=stats.gestureFailCount>=def.threshold; break;
       case 'gesture_fast': met=stats.gestureFastestMs>0 && stats.gestureFastestMs<=def.threshold; break;
@@ -3143,6 +3252,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.00',notes:['21 new achievements covering expectations, themes, photos, CSV export, reminders and more — 194 total','expectation achievements are computed from your stored reviews, so past pairs count retroactively']},
 {v:'2.99',notes:['pending reviews now sort to the top and can be filtered with a pending only option','sharing is blocked on a pending review until you finish it']},
 {v:'2.98',notes:['new per-category expectations option — rate what you expect before, then the real thing after','asks which pass you are doing, but only for categories with the option enabled','expectation-only reviews stay pending in your list until completed; tap one to finish it','optional calendar reminder (.ics) when you save expectations','completed reviews overlay both radars and show whether reality beat expectations','pending reviews are excluded from streaks, achievements and averages until finished']},
 {v:'2.97',notes:['first-run welcome — three quick screens explaining what the app does and the difference between score and character modes','ends by creating a starter category (movie or restaurant) so you are not staring at an empty list','only shows on a genuinely fresh install, and is skippable']},
@@ -3284,6 +3394,7 @@ function closeThemePage(){
 }
 
 function openChangelog(){
+  bumpCounter('rr_changelog_opened'); evaluateAchievements();
   const list=document.getElementById('changelog-list');
   list.innerHTML=CHANGELOG.map(entry=>`
     <div style="margin-bottom:16px">
@@ -4499,6 +4610,7 @@ function showUndoToast(message,undoFn){
     clearTimeout(undoToastTimer);
     t.remove();
     undoFn();
+    bumpCounter('rr_undo_count'); evaluateAchievements();
   };
   document.body.appendChild(t);
   requestAnimationFrame(()=>{ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
