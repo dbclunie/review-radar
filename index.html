@@ -287,7 +287,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.93</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.94</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -572,6 +572,18 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- SECRET STREAK CALENDAR PAGE -->
+<!-- THEME PAGE -->
+<div id="theme-page" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:180;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Special Elite',monospace">
+  <div style="text-align:center;font-size:0.95em;color:var(--accent-light);font-weight:bold;letter-spacing:1px;margin-bottom:14px;flex-shrink:0">theme</div>
+  <div style="flex:1;overflow-y:auto;min-height:0">
+    <div id="theme-picker" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
+    <div id="custom-theme-editor" style="display:none;margin-top:12px;background:var(--surface);border:0.5px solid var(--border-2);border-radius:6px;padding:10px"></div>
+  </div>
+  <div class="btn-row" style="flex-shrink:0;padding-top:10px">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="closeThemePage()">back</div>
+  </div>
+</div>
+
 <!-- CHANGELOG / WHAT'S NEW -->
 <div id="changelog-page" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:180;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Special Elite',monospace">
   <div style="text-align:center;font-size:0.95em;color:var(--accent-light);font-weight:bold;letter-spacing:1px;margin-bottom:14px;flex-shrink:0">what's new</div>
@@ -673,9 +685,13 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div id="import-review-status" style="font-size:0.72em;margin-top:8px;min-height:1.2em;text-align:center"></div>
 
     <div style="height:16px"></div>
-    <div style="color:var(--text-4);font-size:0.68em;text-align:center;margin-bottom:8px;letter-spacing:0.5px">THEME</div>
-    <div id="theme-picker" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
-    <div id="custom-theme-editor" style="display:none;margin-top:10px;background:var(--surface);border:0.5px solid var(--border-2);border-radius:6px;padding:10px"></div>
+    <div tabindex="0" style="display:flex;align-items:center;gap:10px;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;padding:10px;cursor:pointer" onclick="closeBackupModal();openThemePage()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+      <div>
+        <div style="color:var(--text);font-size:0.85em">theme</div>
+        <div id="theme-current-label" style="color:var(--text-4);font-size:0.68em"></div>
+      </div>
+    </div>
 
     <div style="height:16px"></div>
     <div style="color:var(--text-4);font-size:0.68em;text-align:center;margin-bottom:8px;letter-spacing:0.5px">DANGER ZONE</div>
@@ -1308,7 +1324,12 @@ function handleImportReviewFile(e){
 function openBackupModal(){
   document.getElementById('backup-modal').style.display='flex';
   renderLastBackupLine();
-  renderThemePicker();
+  const lbl=document.getElementById('theme-current-label');
+  if(lbl){
+    const cur=getSavedTheme();
+    const t=THEMES.find(x=>x.id===cur);
+    lbl.textContent=t?t.label:cur;
+  }
   const tag=document.getElementById('settings-version-tag');
   if(tag) tag.textContent=document.querySelector('[onclick="openChangelog()"]')?.textContent||'';
 }
@@ -2707,6 +2728,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.94',notes:['theme moved to its own page (from settings) so the custom color editor has room and nothing gets pushed off screen','streak calendar progression is now a single accent ramp varying only in strength, instead of mismatched colors','calendar day numbers now pick their color and outline from the actual cell color \u2014 fixes them being unreadable in light theme']},
 {v:'2.93',notes:['theme settings now included in backups (and restored from them)','custom theme shows a live contrast warning if your colors would be hard to read','theme buttons show color swatches so you can preview before switching']},
 {v:'2.92',notes:['custom theme \u2014 pick your own background, text, accent, positive and negative colors; the rest of the palette derives from them automatically','on-accent text color is chosen by measured contrast so button labels stay readable on any accent you pick']},
 {v:'2.91',notes:['theme support \u2014 match device (light/dark), plus ocean and desert palettes, in settings','entire app converted to use theme tokens: 430+ hardcoded colors replaced, including generated radar charts and share images']},
@@ -2737,6 +2759,14 @@ const CHANGELOG=[
 {v:'2.27\u20132.32',notes:['full-month streak celebration screen']},
 {v:'2.0\u20132.26',notes:['early foundation \u2014 backup/restore, photo attachments, location tagging, category creation, share-to-image']}
 ];
+
+function openThemePage(){
+  renderThemePicker();
+  document.getElementById('theme-page').style.display='flex';
+}
+function closeThemePage(){
+  document.getElementById('theme-page').style.display='none';
+}
 
 function openChangelog(){
   const list=document.getElementById('changelog-list');
@@ -3033,7 +3063,17 @@ function renderAchievementsList(){
 
 const CAL_PENT='polygon(50% 87.5%,85.4% 61.25%,72% 19.6%,27.9% 19.6%,14.6% 61.25%)';
 function calScaleFor(n){ return [0.40,0.625,0.775,0.925,1.10,1.25][Math.min(n,5)]; }
-function calColorFor(n){ return ['var(--bg-deep)','#3d2e14','var(--text-dim-amber)','#8a6018','var(--accent-dark)','var(--accent)'][Math.min(n,5)]; }
+// Uniform ramp: same accent hue throughout, varying only in strength, so it reads as
+// intensity rather than as unrelated colors. Built by blending the theme's accent
+// into the page background — works in any theme, light or dark.
+function calColorFor(n){
+  const i=Math.min(n,5);
+  if(i===0) return 'var(--bg-deep)';
+  const bg=themeColor('--bg','#141412');
+  const accent=themeColor('--accent','#F2A623');
+  const strength=[0,0.22,0.40,0.58,0.78,1][i];
+  return mixHex(bg,accent,strength);
+}
 function calTextFor(n){ return n<=2?'var(--text-2)':n<=3?'var(--text-dim-amber)':'var(--on-accent)'; }
 function calPad(n){ return String(n).padStart(2,'0'); }
 
@@ -3097,8 +3137,13 @@ function renderStreakCalendar(){
     } else {
       shapeLayer=`<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:${scale*100}%;height:${scale*100}%;background:${fill};clip-path:${CAL_PENT}"></div>`;
     }
-    const numberColor=isFuture?'var(--surface-2)':'var(--accent-light)';
-    const outlineStyle=isFuture?'':';text-shadow:0 0 2px #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000';
+    // Pick the number color by measuring against the cell's actual fill, and outline it
+    // with the page background rather than hardcoded black — a black halo on a light
+    // theme was making these unreadable.
+    const cellFill=isToday?themeColor('--accent','#F2A623'):(rev>0?calColorFor(rev):themeColor('--bg-deep','#1A1814'));
+    const numberColor=isFuture?themeColor('--surface-2','#26241F'):bestContrastOn(cellFill);
+    const outlineColor=cellFill;
+    const outlineStyle=isFuture?'':`;text-shadow:0 0 2px ${outlineColor},1px 1px 0 ${outlineColor},-1px -1px 0 ${outlineColor},1px -1px 0 ${outlineColor},-1px 1px 0 ${outlineColor}`;
     const numberLayer=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${numberColor};font-size:9px;font-weight:${rev>0||isToday?'bold':'normal'};line-height:1;padding-top:1px${outlineStyle}">${calPad(d)}</div>`;
     cell.innerHTML=shapeLayer+numberLayer;
     cell.onclick=()=>{
