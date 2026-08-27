@@ -491,7 +491,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.97</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.98</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -514,7 +514,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
         ontouchend="cancelCatBtnPress()" ontouchmove="cancelCatBtnPress()"></div>
       <div class="custom-dd-panel" id="cat-dd-panel"></div>
     </div>
-    <div tabindex="0" class="btn" style="text-align:center" onclick="document.getElementById('new-cat-stars-box').classList.add('on');document.getElementById('new-cat-location-box').classList.remove('on');document.getElementById('new-cat-note-box').classList.remove('on');document.getElementById('cat-name-hint').textContent='';document.getElementById('new-cat-name').textContent='';newLocation=false;newNote=false;renderModeExamples();setMode('review');showScreen('s-addcat')">+category</div>
+    <div tabindex="0" class="btn" style="text-align:center" onclick="document.getElementById('new-cat-stars-box').classList.add('on');document.getElementById('new-cat-location-box').classList.remove('on');document.getElementById('new-cat-note-box').classList.remove('on');document.getElementById('new-cat-expect-box').classList.remove('on');document.getElementById('cat-name-hint').textContent='';document.getElementById('new-cat-name').textContent='';newLocation=false;newNote=false;newExpect=false;renderModeExamples();setMode('review');showScreen('s-addcat')">+category</div>
   </div>
   <div id="saved-reviews-label" style="font-size:1.125em;font-weight:bold;color:var(--text-2);margin-top:10px;flex-shrink:0;display:none;text-align:center">your reviews</div>
   <div id="saved-reviews-search-wrap" style="display:none;margin-top:6px;flex-shrink:0;position:relative">
@@ -569,6 +569,10 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       <div class="star-toggle-row" onclick="toggleNewCatNote()" style="margin-bottom:0">
         <div class="star-toggle-box" id="new-cat-note-box"></div>
         <span>note field</span>
+      </div>
+      <div class="star-toggle-row" onclick="toggleNewCatExpect()" style="margin-bottom:0">
+        <div class="star-toggle-box" id="new-cat-expect-box"></div>
+        <span>expectations</span>
       </div>
     </div>
   </div>
@@ -627,6 +631,10 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
         <div class="star-toggle-box" id="edit-cat-note-box"></div>
         <span>note field</span>
       </div>
+      <div class="star-toggle-row" onclick="toggleEditCatExpect()" style="margin-bottom:0">
+        <div class="star-toggle-box" id="edit-cat-expect-box"></div>
+        <span>expectations</span>
+      </div>
     </div>
   </div>
   <div class="btn-row" style="flex-shrink:0;padding-top:10px">
@@ -652,6 +660,44 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- SCREEN 3: item name -->
+<!-- SCREEN 2d: expectation or actual (only when category has expectations enabled) -->
+<!-- SCREEN 2e: expectation saved as pending -->
+<div class="screen" id="s-pendingsaved">
+  <div class="hdr" style="flex-shrink:0"><span id="pending-saved-cat"></span><span id="pending-saved-item"></span></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center">
+    <div style="font-size:2em;color:var(--accent);margin-bottom:8px">\u25F4</div>
+    <div style="color:var(--text);font-size:0.95em;font-weight:bold;margin-bottom:6px">expectations saved</div>
+    <div style="color:var(--text-4);font-size:0.78em;line-height:1.5;max-width:300px;margin:0 auto 18px">
+      this stays pending in your list until you come back and rate the real thing.</div>
+    <div tabindex="0" class="btn" style="text-align:center;padding:10px;margin-bottom:8px" onclick="addPendingReminder()">
+      remind me \u2014 add to calendar
+    </div>
+    <div style="color:var(--text-5);font-size:0.68em;line-height:1.4;max-width:290px;margin:0 auto">
+      downloads a calendar file your phone can open</div>
+  </div>
+  <div class="btn-row" style="flex-shrink:0;padding-top:10px">
+    <div tabindex="0" class="btn primary" style="flex:1;text-align:center" onclick="reset()">done</div>
+  </div>
+</div>
+
+<div class="screen" id="s-expectchoice">
+  <div class="hdr" style="flex-shrink:0"><span id="hdr-expect-cat"></span><span id="hdr-expect-item"></span></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center">
+    <div style="color:var(--text-2);font-size:0.85em;margin-bottom:16px">what are you rating right now?</div>
+    <div tabindex="0" class="btn" style="text-align:left;padding:12px;margin-bottom:10px" onclick="startExpectationPass()">
+      <div style="color:var(--accent);font-size:0.9em;font-weight:bold">expectations</div>
+      <div style="color:var(--text-4);font-size:0.72em;margin-top:2px;line-height:1.4">before you've experienced it. saved as pending until you come back with the real thing.</div>
+    </div>
+    <div tabindex="0" class="btn" style="text-align:left;padding:12px" onclick="startActualPass()">
+      <div style="color:var(--text);font-size:0.9em;font-weight:bold">the actual review</div>
+      <div style="color:var(--text-4);font-size:0.72em;margin-top:2px;line-height:1.4">you've already experienced it \u2014 skip expectations entirely.</div>
+    </div>
+  </div>
+  <div class="btn-row" style="flex-shrink:0;padding-top:10px">
+    <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-item')">back</div>
+  </div>
+</div>
+
 <div class="screen" id="s-item">
   <div class="hdr"><span id="hdr-item-cat"></span><span id="hdr-item-live"></span></div>
   <div class="field-label" id="item-screen-label" style="margin-bottom:6px;margin-top:4px">what are you reviewing?</div>
@@ -764,6 +810,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div id="view-bars" style="margin-bottom:1px"></div>
     <div class="divider" style="margin:3px 0"></div>
     <div id="view-radar" style="margin:1px auto;max-width:170px"></div>
+    <div id="view-expect-gap" style="display:none;font-size:0.7em;text-align:center;margin-top:3px"></div>
     <div class="divider" style="margin:3px 0"></div>
     <div id="view-result"></div>
     <div id="view-location" style="font-size:0.68em;text-align:center;margin-top:2px"></div>
@@ -1851,6 +1898,9 @@ function pickCat(cat){
   currentReviewSaved=false;
   currentReviewId=null;
   editingReviewId=null;
+  completingPendingId=null;
+  pendingExpectedScores=null;
+  dialPass='actual';
   document.getElementById('hdr-item-cat').textContent=cat.label.toUpperCase();
   document.getElementById('item-screen-label').textContent=`add a ${cat.label} review`;
   document.getElementById('hdr-item-live').textContent='';
@@ -1973,10 +2023,37 @@ function startDial(){
   curItem=val;
   inp.textContent='';
   document.getElementById('hdr-item-live').textContent='';
+
+  // Only ask the expectation question when the category opted in, and only for a
+  // fresh review — editing or completing a pending one already knows which pass it is.
+  if(curCat.useExpect && !editingReviewId && !completingPendingId){
+    document.getElementById('hdr-expect-cat').textContent=curCat.label.toUpperCase();
+    document.getElementById('hdr-expect-item').textContent=curItem;
+    showScreen('s-expectchoice');
+    return;
+  }
+  beginDialPass();
+}
+
+// Which pass the dial is currently capturing: 'actual' (normal) or 'expected'.
+let dialPass='actual';
+let completingPendingId=null;
+let pendingExpectedScores=null;
+
+function beginDialPass(){
   dialIdx=0;
   confirmedAxes=new Set();
   renderDial();
   showScreen('s-dial');
+}
+
+function startExpectationPass(){
+  dialPass='expected';
+  beginDialPass();
+}
+function startActualPass(){
+  dialPass='actual';
+  beginDialPass();
 }
 
 // ── SCREEN 4: DIAL ───────────────────────────────────────────────────────
@@ -2000,6 +2077,7 @@ function dialNext(){
 
   const done=allNonZero || zeroUnconfirmed.length===0;
   if(done){
+    if(dialPass==='expected'){ savePendingExpectation(); return; }
     if(curCat.useLocation){ openMapPicker(); }
     else { renderConfirm(); }
     return;
@@ -2135,7 +2213,9 @@ function renderConfirm(){
 
   // Auto-save immediately so it appears in the list regardless of share/back
   const {payload:ap,scoreText:ast}=buildReviewPayload();
-  if(editingReviewId){
+  if(completingPendingId){
+    completePendingRecord(cat,ap,ast);
+  } else if(editingReviewId){
     updateExistingReview(cat,ap,ast);
   } else {
     recordCurrentReview(cat,ap,ast);
@@ -2456,6 +2536,113 @@ function buildReviewPayload(){
 
 let currentReviewSaved=false;
 let currentReviewId=null;
+// ── PENDING EXPECTATIONS ─────────────────────────────────────────────────
+// A pending review holds only expected scores; it has no grade/total until the
+// actual pass is filled in later. Deliberately excluded from streaks/achievements
+// — a streak should mean you actually reviewed something, not that you planned to.
+function savePendingExpectation(){
+  const cat=curCat;
+  const ts=new Date().toISOString();
+  const rec={
+    id:ts, ts,
+    catId:cat.id, catLabel:cat.label, mode:cat.mode, axes:[...cat.axes], stars:!!cat.stars,
+    pending:true,
+    expectedScores:{...scores},
+    scores:null,
+    item:curItem||null,
+    scoreText:'pending',
+    note:null, location:null, photoDataUrls:[], photoDataUrl:null
+  };
+  savedReviews.unshift(rec);
+  saveSavedReviews(savedReviews);
+  renderSavedReviewsList();
+  dialPass='actual';
+  showPendingSavedScreen(rec);
+}
+
+function showPendingSavedScreen(rec){
+  document.getElementById('pending-saved-item').textContent=rec.item||'';
+  document.getElementById('pending-saved-cat').textContent=(rec.catLabel||'').toUpperCase();
+  window._lastPendingRec=rec;
+  showScreen('s-pendingsaved');
+}
+
+// Start the actual-review pass for an existing pending record.
+function completePendingReview(id){
+  const rec=savedReviews.find(r=>r.id===id);
+  if(!rec) return;
+  const liveCat=registry.find(c=>c.id===rec.catId);
+  curCat=liveCat||{id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:[...rec.axes],stars:rec.stars,useExpect:true};
+  scores={};
+  curCat.axes.forEach(a=>scores[a]=0);
+  curItem=rec.item||'';
+  curStars=3;
+  curLocation=null;
+  curMapSnapshot=null;
+  curNote='';
+  attachedPhotos=[];
+  locationPending=false;
+  currentReviewSaved=false;
+  currentReviewId=null;
+  editingReviewId=null;
+  completingPendingId=id;
+  pendingExpectedScores={...rec.expectedScores};
+  dialPass='actual';
+  document.getElementById('hdr-item-cat').textContent=curCat.label.toUpperCase();
+  document.getElementById('hdr-dial-item').textContent=curItem;
+  beginDialPass();
+}
+
+// Generates a standard .ics file — a web page can't write to a calendar directly,
+// so this hands off to whatever calendar app the device uses.
+function addPendingReminder(){
+  const rec=window._lastPendingRec;
+  if(!rec) return;
+  const when=new Date(Date.now()+7*86400000); // default: a week out
+  const fmt=d=>d.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const title=`Review Radar: rate ${rec.item||rec.catLabel}`;
+  const desc=`You saved expectations for "${rec.item||rec.catLabel}". Open Review Radar to fill in the actual review.`;
+  const ics=[
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Review Radar//EN','CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:rr-${rec.id}@review-radar`,
+    `DTSTAMP:${fmt(new Date())}`,
+    `DTSTART:${fmt(when)}`,
+    `DTEND:${fmt(new Date(when.getTime()+30*60000))}`,
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${desc}`,
+    'BEGIN:VALARM','TRIGGER:-PT1H','ACTION:DISPLAY',`DESCRIPTION:${title}`,'END:VALARM',
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  downloadBlob(new Blob([ics],{type:'text/calendar'}),`review_radar_reminder_${(rec.item||'review').replace(/[^a-z0-9]+/gi,'_').slice(0,30)}.ics`);
+}
+
+// Fills the actual scores into an existing pending record, keeping the original
+// expectations alongside them. This is the point it stops being pending and
+// starts counting toward streaks/achievements.
+function completePendingRecord(cat,payload,scoreText){
+  const rec=savedReviews.find(r=>r.id===completingPendingId);
+  if(!rec) return;
+  rec.pending=false;
+  rec.catLabel=cat.label; rec.mode=cat.mode; rec.axes=[...cat.axes]; rec.stars=!!cat.stars;
+  rec.scores={...payload.axes}; rec.scoreText=scoreText;
+  rec.total=payload.total; rec.max=payload.max; rec.grade=payload.grade;
+  rec.intensity=payload.intensity; rec.harmony=payload.harmony;
+  rec.curStars=payload.stars||null;
+  rec.location=payload.location||null;
+  rec.note=payload.note||null;
+  rec.completedAt=new Date().toISOString();
+  currentReviewId=rec.id;
+  currentReviewSaved=true;
+  saveSavedReviews(savedReviews);
+  renderSavedReviewsList();
+  checkFullMonthStreak();
+  evaluateAchievements();
+  syncPhotosToRecord(rec);
+  completingPendingId=null;
+  pendingExpectedScores=null;
+}
+
 function recordCurrentReview(cat,payload,scoreText){
   if(currentReviewSaved) return;
   currentReviewSaved=true;
@@ -2782,7 +2969,7 @@ function computeAchievementStats(){
   let leapDay=false, janFirst=false;
   let firstReviewDate=null;
 
-  savedReviews.forEach(r=>{
+  savedReviews.filter(r=>!r.pending).forEach(r=>{
     const d=new Date(r.ts);
     const dayKey=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
     dayReviewCounts[dayKey]=(dayReviewCounts[dayKey]||0)+1;
@@ -2835,7 +3022,7 @@ function computeAchievementStats(){
   const allWeekdaysCovered=weekdaysSeen.size>=7;
 
   return {
-    totalReviews:savedReviews.length,
+    totalReviews:savedReviews.filter(r=>!r.pending).length,
     currentStreak:getCurrentStreak(),
     consecutiveMonthStreaks:getConsecutiveMonthStreaks(),
     gradeCounts, starCounts,
@@ -2956,6 +3143,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.98',notes:['new per-category expectations option — rate what you expect before, then the real thing after','asks which pass you are doing, but only for categories with the option enabled','expectation-only reviews stay pending in your list until completed; tap one to finish it','optional calendar reminder (.ics) when you save expectations','completed reviews overlay both radars and show whether reality beat expectations','pending reviews are excluded from streaks, achievements and averages until finished']},
 {v:'2.97',notes:['first-run welcome — three quick screens explaining what the app does and the difference between score and character modes','ends by creating a starter category (movie or restaurant) so you are not staring at an empty list','only shows on a genuinely fresh install, and is skippable']},
 {v:'2.96',notes:['renamed ocean to aquatic','seven new themes: grassland, forest, tundra, spring, summer, fall, winter','all 10 preset themes verified to meet contrast standards for text and accents']},
 {v:'2.95',notes:['fixed confirm dialogs (like reset achievements) appearing behind full-screen pages instead of on top of them']},
@@ -3731,7 +3919,8 @@ function showMonthStreakCelebration(monthLength,monthKey){
   };
 }
 
-function renderAvgStatsLine(filtered){
+function renderAvgStatsLine(filteredAll){
+  const filtered=filteredAll.filter(r=>!r.pending); // pending has no scores to average
   const statsEl=document.getElementById('saved-reviews-avgstats');
   if(!filtered.length){ statsEl.style.display='none'; return; }
 
@@ -3850,7 +4039,7 @@ function renderSavedReviewsList(){
     if(reviewSortMode==='oldest') return new Date(a.ts)-new Date(b.ts);
     if(reviewSortMode==='alpha') return (a.item||'').localeCompare(b.item||'');
     if(reviewSortMode==='grade-high'||reviewSortMode==='grade-low'){
-      const scoreOf=r=>r.mode==='review'&&r.max?r.total/r.max:(r.intensity!=null?r.intensity/5:-1);
+      const scoreOf=r=>r.pending?-1:(r.mode==='review'&&r.max?r.total/r.max:(r.intensity!=null?r.intensity/5:-1));
       const diff=scoreOf(b)-scoreOf(a);
       return reviewSortMode==='grade-high'?diff:-diff;
     }
@@ -3896,7 +4085,10 @@ function renderSavedReviewsList(){
 
     // score badge
     let scoreBadge='';
-    if(rec.mode==='review'){
+    if(rec.pending){
+      scoreBadge=`<span style="color:var(--accent);font-weight:bold;white-space:nowrap;border:1px solid var(--accent);border-radius:4px;padding:0 5px;font-size:0.8em">pending</span>
+        <span style="color:var(--text-4);font-size:0.8em;margin-left:5px">tap to finish</span>`;
+    } else if(rec.mode==='review'){
       const gr=grade(rec.total,rec.max);
       scoreBadge=`<span style="color:${gr.col};font-weight:bold;white-space:nowrap">${rec.total}/${rec.max}</span>
         <span style="display:inline-flex;align-items:center;justify-content:center;width:1.4em;height:1.4em;border-radius:4px;border:1.5px solid ${gr.col};color:${gr.col};font-weight:bold;font-size:0.85em;margin-left:3px">${gr.g}</span>`;
@@ -3904,7 +4096,8 @@ function renderSavedReviewsList(){
       scoreBadge=`<span style="color:var(--accent);font-weight:bold;white-space:nowrap">i:${rec.intensity}</span>
         <span style="color:${rec.harmony<=2?'var(--bad)':'var(--good)'};font-weight:bold;white-space:nowrap;margin-left:4px">h:${rec.harmony}</span>`;
     }
-    const starsHtml=rec.stars&&rec.curStars?`<span style="margin-left:3px">${starSVG(5,rec.curStars,11,null)}</span>`:'';
+    const starsHtml=(!rec.pending&&rec.stars&&rec.curStars)?`<span style="margin-left:3px">${starSVG(5,rec.curStars,11,null)}</span>`:'';
+    if(rec.pending) row.style.opacity='0.72';
 
     row.innerHTML=`<div style="flex:1;min-width:0">
         <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:bold">${rec.catLabel}${rec.item?' \u00b7 '+rec.item:''}</div>
@@ -3928,6 +4121,7 @@ function renderSavedReviewsList(){
 
     row.onclick=()=>{
       if(selectModeActive){ toggleReviewSelection(rec.id); }
+      else if(rec.pending){ completePendingReview(rec.id); }
       else{ viewSavedReview(rec.id); }
     };
     listEl.appendChild(row);
@@ -4108,7 +4302,22 @@ function viewSavedReview(id){
 
   const savedDialIdx=dialIdx;
   dialIdx=-1;
-  document.getElementById('view-radar').innerHTML=radarSVG(rec.axes,rec.scores);
+  // If this review started as an expectation, overlay both so the gap is visible
+  document.getElementById('view-radar').innerHTML=rec.expectedScores
+    ? compareRadarSVG(rec.axes,rec.expectedScores,rec.scores)
+    : radarSVG(rec.axes,rec.scores);
+  const gapEl=document.getElementById('view-expect-gap');
+  if(gapEl){
+    if(rec.expectedScores && rec.scores){
+      const exp=rec.axes.reduce((s,a)=>s+(rec.expectedScores[a]||0),0);
+      const act=rec.axes.reduce((s,a)=>s+(rec.scores[a]||0),0);
+      const diff=act-exp;
+      const word=diff>0?'exceeded':diff<0?'fell short of':'matched';
+      const col=diff>0?'var(--good)':diff<0?'var(--bad)':'var(--text-2)';
+      gapEl.style.display='block';
+      gapEl.innerHTML=`<span style="color:var(--accent)">expected ${exp}</span> \u2192 <span style="color:var(--text)">got ${act}</span> \u00b7 <span style="color:${col}">${word} expectations${diff?` by ${Math.abs(diff)}`:''}</span>`;
+    } else { gapEl.style.display='none'; }
+  }
   dialIdx=savedDialIdx;
 
   const starMid=rec.stars&&rec.curStars?`<div style="margin:0 10px">${starSVG(5,rec.curStars,20,null)}</div>`:'';
@@ -4741,7 +4950,7 @@ function confirmModalYes(){
   if(cb) cb();
 }
 
-function reset(){ curCat=null; scores={}; dialIdx=0; curItem=''; editingReviewId=null; preGeneratedFile=null; preGeneratedMsg=null; preGeneratedStamp=null; removeAttachedPhoto(); closeCatDD(); renderCatSelect(); showScreen('s-cat'); }
+function reset(){ curCat=null; scores={}; dialIdx=0; curItem=''; editingReviewId=null; completingPendingId=null; pendingExpectedScores=null; dialPass='actual'; preGeneratedFile=null; preGeneratedMsg=null; preGeneratedStamp=null; removeAttachedPhoto(); closeCatDD(); renderCatSelect(); showScreen('s-cat'); }
 
 // ── ADD CATEGORY ──────────────────────────────────────────────────────────
 let newMode='review';
@@ -4749,6 +4958,7 @@ let newAxes=[];
 let newStars=true;
 let newLocation=false;
 let newNote=false;
+let newExpect=false;
 function toggleNewCatStars(){
   newStars=!newStars;
   document.getElementById('new-cat-stars-box').classList.toggle('on',newStars);
@@ -4762,6 +4972,10 @@ function toggleNewCatLocation(){
 function toggleNewCatNote(){
   newNote=!newNote;
   document.getElementById('new-cat-note-box').classList.toggle('on',newNote);
+}
+function toggleNewCatExpect(){
+  newExpect=!newExpect;
+  document.getElementById('new-cat-expect-box').classList.toggle('on',newExpect);
 }
 function starIcon(i,lit,size,onClickPrefix){
   const click=onClickPrefix?` onclick="${onClickPrefix}(${i})" class="star-icon"`:'';
@@ -4960,13 +5174,14 @@ function saveNewCat(){
     return;
   }
 
-  const cat={id:name,label:name,mode:newMode,axes:[...newAxes],stars:newStars,useLocation:newLocation,useNote:newNote};
+  const cat={id:name,label:name,mode:newMode,axes:[...newAxes],stars:newStars,useLocation:newLocation,useNote:newNote,useExpect:newExpect};
   if(newMode==='profile') cat.showHarmony=true;
   registry.push(cat);
   saveRegistry(registry);
-  newAxes=[]; newMode='review'; newStars=true; newLocation=false; newNote=false;
+  newAxes=[]; newMode='review'; newStars=true; newLocation=false; newNote=false; newExpect=false;
   document.getElementById('new-cat-location-box').classList.remove('on');
   document.getElementById('new-cat-note-box').classList.remove('on');
+  document.getElementById('new-cat-expect-box').classList.remove('on');
   document.getElementById('new-cat-name').textContent='';
   document.getElementById('new-cat-stars-box').classList.add('on');
   setMode('review');
@@ -4980,6 +5195,7 @@ let editingCatIndex=null;
 let editStars=true;
 let editLocation=false;
 let editNote=false;
+let editExpect=false;
 
 function toggleEditCatStars(){
   editStars=!editStars;
@@ -4992,6 +5208,11 @@ function toggleEditCatLocation(){
 function toggleEditCatNote(){
   editNote=!editNote;
   document.getElementById('edit-cat-note-box').classList.toggle('on',editNote);
+  document.getElementById('edit-cat-expect-box').classList.toggle('on',editExpect);
+}
+function toggleEditCatExpect(){
+  editExpect=!editExpect;
+  document.getElementById('edit-cat-expect-box').classList.toggle('on',editExpect);
 }
 
 function openEditCategory(index){
@@ -5009,6 +5230,7 @@ function openEditCategory(index){
   editStars=!!cat.stars;
   editLocation=!!cat.useLocation;
   editNote=!!cat.useNote;
+  editExpect=!!cat.useExpect;
   document.getElementById('edit-cat-stars-box').classList.toggle('on',editStars);
   document.getElementById('edit-cat-location-box').classList.toggle('on',editLocation);
   document.getElementById('edit-cat-note-box').classList.toggle('on',editNote);
@@ -5098,6 +5320,7 @@ function saveEditedCategory(){
   cat.stars=editStars;
   cat.useLocation=editLocation;
   cat.useNote=editNote;
+  cat.useExpect=editExpect;
   saveRegistry(registry);
 
   // Migrate existing saved reviews: update catLabel + rename score keys for any changed axis
