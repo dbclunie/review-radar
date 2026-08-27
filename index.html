@@ -287,7 +287,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.92</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v2.93</span>
 </div>
 
 <!-- SCREEN 1: category picker -->
@@ -877,6 +877,10 @@ function setCustomRole(key,value){
   const cfg=getCustomTheme();
   cfg[key]=value;
   saveCustomTheme(cfg);
+  // Update only the warning text — re-rendering the whole editor here would rebuild
+  // the <input type=color> elements mid-drag and interrupt the picker.
+  const warnEl=document.getElementById('contrast-warning');
+  if(warnEl) warnEl.outerHTML=buildContrastWarning(cfg);
   if(getSavedTheme()==='custom'){
     applyCustomTokens();
     if(typeof renderCatSelect==='function') renderCatSelect();
@@ -891,12 +895,38 @@ function resetCustomTheme(){
   if(getSavedTheme()==='custom') applyCustomTokens();
 }
 
+// Swatch colors shown on each preset button, so you can see roughly what you're
+// picking before switching. Mirrors the palettes defined in CSS above.
+const THEME_SWATCHES={
+  dark:  ['#141412','#F2A623','#E8E6DE'],
+  light: ['#FAF7F0','#C4831A','#2A2721'],
+  ocean: ['#0E1A22','#3FBFCF','#DCEAF0'],
+  desert:['#241A14','#E8792F','#F2E4D4']
+};
+
+function swatchHTML(id){
+  let cols;
+  if(id==='auto'){
+    const resolved=resolveTheme('auto');
+    cols=THEME_SWATCHES[resolved]||THEME_SWATCHES.dark;
+  } else if(id==='custom'){
+    const cfg=getCustomTheme();
+    cols=[cfg.bg,cfg.accent,cfg.text];
+  } else {
+    cols=THEME_SWATCHES[id];
+  }
+  if(!cols) return '';
+  return `<span style="display:inline-flex;gap:2px;margin-right:5px;vertical-align:middle">`
+    + cols.map(c=>`<span style="width:8px;height:8px;border-radius:2px;background:${c};border:0.5px solid rgba(128,128,128,0.4)"></span>`).join('')
+    + `</span>`;
+}
+
 function renderThemePicker(){
   const wrap=document.getElementById('theme-picker');
   if(!wrap) return;
   const current=getSavedTheme();
   wrap.innerHTML=THEMES.map(t=>
-    `<div tabindex="0" class="btn" style="padding:6px 10px;font-size:0.75em;${t.id===current?'border-color:var(--accent);color:var(--accent)':''}" onclick="setTheme('${t.id}')">${t.label}</div>`
+    `<div tabindex="0" class="btn" style="padding:6px 10px;font-size:0.75em;display:flex;align-items:center;${t.id===current?'border-color:var(--accent);color:var(--accent)':''}" onclick="setTheme('${t.id}')">${swatchHTML(t.id)}${t.label}</div>`
   ).join('');
 
   const editor=document.getElementById('custom-theme-editor');
@@ -910,7 +940,28 @@ function renderThemePicker(){
       <input type="color" value="${cfg[r.key]}" oninput="setCustomRole('${r.key}',this.value)"
         style="width:44px;height:26px;border:0.5px solid var(--border-2);border-radius:4px;background:var(--surface-2);cursor:pointer;padding:2px">
     </label>`).join('')
+    + buildContrastWarning(cfg)
     + `<div tabindex="0" class="btn" style="width:100%;text-align:center;padding:5px;font-size:0.72em;margin-top:4px" onclick="resetCustomTheme()">reset custom colors</div>`;
+}
+
+// Warn when a chosen combination produces text that's genuinely hard to read.
+// Checks the derived tiers too, not just the colors picked directly — a combo can
+// look fine at full-strength text and still be unreadable once dimmed.
+function buildContrastWarning(cfg){
+  const tokens=deriveCustomTokens(cfg);
+  const bg=cfg.bg;
+  const checks=[
+    {label:'main text',      c:contrastRatioHex(cfg.text,bg),        min:4.5},
+    {label:'secondary text', c:contrastRatioHex(tokens['--text-2'],bg), min:4.5},
+    {label:'muted text',     c:contrastRatioHex(tokens['--text-4'],bg), min:3.0},
+    {label:'accent',         c:contrastRatioHex(cfg.accent,bg),      min:3.0}
+  ];
+  const failing=checks.filter(c=>c.c<c.min);
+  if(!failing.length){
+    return `<div id="contrast-warning" style="font-size:0.68em;color:var(--good);text-align:center;margin:8px 0 4px">\u2713 readable contrast</div>`;
+  }
+  const names=failing.map(f=>`${f.label} (${f.c.toFixed(1)}:1)`).join(', ');
+  return `<div id="contrast-warning" style="font-size:0.68em;color:var(--bad);text-align:center;margin:8px 0 4px;line-height:1.4">\u26a0 hard to read: ${names}<br><span style="color:var(--text-4)">try more separation between background and text</span></div>`;
 }
 
 // Follow the OS in real time while in 'auto' mode
@@ -1039,10 +1090,14 @@ async function showSaveFailedBanner(isQuota){
 function exportBackup(){
   const backup={
     app:'review-radar',
-    version:1,
+    version:2,
     exportedAt:new Date().toISOString(),
     registry,
-    savedReviews
+    savedReviews,
+    settings:{
+      theme:getSavedTheme(),
+      customTheme:getCustomTheme()
+    }
   };
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
   const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
@@ -1156,6 +1211,13 @@ function confirmRestore(){
       savedReviews=pendingRestoreData.savedReviews;
       saveRegistry(registry);
       saveSavedReviews(savedReviews);
+      // Theme settings only exist in v2+ backups — older files just skip this.
+      const s=pendingRestoreData.settings;
+      if(s){
+        if(s.customTheme) saveCustomTheme(s.customTheme);
+        if(s.theme){ try{ localStorage.setItem('rr_theme',s.theme); }catch(e){} applyTheme(s.theme); }
+        renderThemePicker();
+      }
       pendingRestoreData=null;
       document.getElementById('restore-status').textContent='';
       document.getElementById('restore-confirm-btn').style.display='none';
@@ -2645,6 +2707,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'2.93',notes:['theme settings now included in backups (and restored from them)','custom theme shows a live contrast warning if your colors would be hard to read','theme buttons show color swatches so you can preview before switching']},
 {v:'2.92',notes:['custom theme \u2014 pick your own background, text, accent, positive and negative colors; the rest of the palette derives from them automatically','on-accent text color is chosen by measured contrast so button labels stay readable on any accent you pick']},
 {v:'2.91',notes:['theme support \u2014 match device (light/dark), plus ocean and desert palettes, in settings','entire app converted to use theme tokens: 430+ hardcoded colors replaced, including generated radar charts and share images']},
 {v:'2.90',notes:['removed the always-visible storage bar \u2014 with reviews now on real device storage it would just say "plenty of room" forever for almost everyone. usage is now only measured and shown at the moment a save actually fails, when it\u2019s actually relevant']},
