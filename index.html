@@ -422,6 +422,10 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .mode-ex-text.expanded .clamp{display:block;-webkit-line-clamp:unset;overflow:visible}
 .mode-example.sel{border-color:var(--accent);box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
 .mode-example.unsel{opacity:0.8}
+#blip-filters-backdrop.open{display:block}
+#blip-filters.open{opacity:1;pointer-events:auto;transform:translateY(0)}
+#blip-radar{transition:opacity .55s ease,transform .55s cubic-bezier(.4,0,.2,1)}
+#blip-outcome{transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1)}
 #attach-preview-item.open{max-height:60px !important}
 .field-label{font-size:0.85em;color:var(--text-2);margin-bottom:4px}
 .field-input{width:100%;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:'Special Elite',monospace;font-size:1em;padding:10px 9px 6px 9px;outline:none;box-sizing:border-box}
@@ -491,7 +495,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.00</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.01</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -515,6 +519,16 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       <div class="custom-dd-panel" id="cat-dd-panel"></div>
     </div>
     <div tabindex="0" class="btn" style="text-align:center" onclick="document.getElementById('new-cat-stars-box').classList.add('on');document.getElementById('new-cat-location-box').classList.remove('on');document.getElementById('new-cat-note-box').classList.remove('on');document.getElementById('new-cat-expect-box').classList.remove('on');document.getElementById('cat-name-hint').textContent='';document.getElementById('new-cat-name').textContent='';newLocation=false;newNote=false;newExpect=false;renderModeExamples();setMode('review');showScreen('s-addcat')">+category</div>
+  </div>
+  <div style="flex-shrink:0;margin-top:10px">
+    <div style="font-size:0.68em;color:var(--text-4);letter-spacing:0.5px;margin-bottom:6px;text-align:center">TOOLS</div>
+    <div tabindex="0" style="display:flex;align-items:center;gap:10px;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;padding:10px;cursor:pointer" onclick="openBlip()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2" fill="var(--accent)"/></svg>
+      <div>
+        <div style="color:var(--text);font-size:0.85em">Blip</div>
+        <div style="color:var(--text-4);font-size:0.68em">can't decide? let the radar pick, from your own reviews</div>
+      </div>
+    </div>
   </div>
   <div id="saved-reviews-label" style="font-size:1.125em;font-weight:bold;color:var(--text-2);margin-top:10px;flex-shrink:0;display:none;text-align:center">your reviews</div>
   <div id="saved-reviews-search-wrap" style="display:none;margin-top:6px;flex-shrink:0;position:relative">
@@ -596,6 +610,48 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div class="btn-row" style="flex-shrink:0;padding-top:6px">
     <div tabindex="0" class="btn" style="flex:1;text-align:center" onclick="showScreen('s-cat')">cancel</div>
     <div tabindex="0" class="btn primary" style="flex:1;text-align:center" onclick="saveNewCat()">save</div>
+  </div>
+</div>
+
+<!-- SCREEN: Blip -->
+<div class="screen" id="s-blip">
+  <div class="hdr" style="flex-shrink:0"><span>BLIP</span><span id="blip-hdr-count"></span></div>
+
+  <div tabindex="0" class="btn" style="margin-bottom:8px;font-size:0.75em;flex-shrink:0" onclick="toggleBlipFilters()">narrow it down ▾</div>
+  <div class="filters-backdrop" id="blip-filters-backdrop" onclick="toggleBlipFilters()" style="position:fixed;inset:0;z-index:15;display:none"></div>
+  <div class="filters" id="blip-filters" style="position:absolute;left:18px;right:18px;top:88px;z-index:20;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.45);padding:10px;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease">
+    <div class="field-label">category</div>
+    <select id="blip-f-cat" class="filter-select" onchange="blipRebuild()"></select>
+    <div style="height:8px"></div>
+    <div class="field-label">rating</div>
+    <select id="blip-f-grade" class="filter-select" onchange="blipRebuild()"></select>
+    <div style="height:8px"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:0.75em;color:var(--text-2)">
+      <input type="checkbox" id="blip-f-recency" checked onchange="blipRebuild()">
+      <span>favor things I haven't picked recently</span>
+    </label>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:0;position:relative" id="blip-scope-wrap">
+    <svg id="blip-radar" viewBox="0 0 300 300" style="width:100%;max-width:300px;transition:opacity .55s ease,transform .55s cubic-bezier(.4,0,.2,1)"></svg>
+    <div id="blip-outcome" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transform:scale(0.05);transform-origin:150px 150px;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1)">
+      <svg viewBox="0 0 300 300" style="width:100%;max-width:260px" id="blip-outcome-radar"></svg>
+      <div id="blip-outcome-info" style="text-align:center;margin-top:6px"></div>
+      <div tabindex="0" class="btn" style="margin-top:10px;padding:6px 14px;font-size:0.75em" id="blip-view-full-btn" onclick="blipViewFullReview()">view full review</div>
+    </div>
+    <div id="blip-result" style="text-align:center;min-height:40px;margin-top:6px"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:10px;flex-shrink:0">
+    <button class="btn" style="flex:1" onclick="closeBlip()">back</button>
+    <button class="btn primary" style="flex:2" id="blip-go" onclick="blipSpin()">blip it</button>
+  </div>
+
+  <div id="blip-final-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--surface);border:1px solid var(--border-2);border-radius:10px;padding:22px;text-align:center;max-width:280px;width:100%">
+      <div style="font-size:1.05em;color:var(--accent);font-weight:bold;line-height:1.4">that's the one. no more picking.</div>
+      <div tabindex="0" class="btn primary" style="margin-top:16px;width:100%;text-align:center" onclick="document.getElementById('blip-final-modal').style.display='none'">ok</div>
+    </div>
   </div>
 </div>
 
@@ -3252,6 +3308,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.01',notes:['Blip \u2014 a new tool on the main page for when you can\u2019t decide. Picks randomly from your own reviews, filterable by category and rating, with a radar-sweep animation','favors things you haven\u2019t picked recently (adjustable)','each pick is excluded from repeating for the rest of the session, whether from "blip again" or picking down to the last option','pulls real data from your saved reviews \u2014 adapts to grade-based or character/intensity-based categories automatically']},
 {v:'3.00',notes:['21 new achievements covering expectations, themes, photos, CSV export, reminders and more — 194 total','expectation achievements are computed from your stored reviews, so past pairs count retroactively']},
 {v:'2.99',notes:['pending reviews now sort to the top and can be filtered with a pending only option','sharing is blocked on a pending review until you finish it']},
 {v:'2.98',notes:['new per-category expectations option — rate what you expect before, then the real thing after','asks which pass you are doing, but only for categories with the option enabled','expectation-only reviews stay pending in your list until completed; tap one to finish it','optional calendar reminder (.ics) when you save expectations','completed reviews overlay both radars and show whether reality beat expectations','pending reviews are excluded from streaks, achievements and averages until finished']},
@@ -3383,6 +3440,355 @@ function maybeShowWelcome(){
   welcomeStep=0;
   renderWelcome();
   document.getElementById('welcome-page').style.display='flex';
+}
+
+// ── BLIP ──────────────────────────────────────────────────────────────────
+// Every animation constant/mechanic here was verified numerically in a standalone
+// mockup before this integration (crossing detection, linger decay rates, the
+// physically-continuous deceleration-free constant sweep, exclusion persistence,
+// origin-position-before-mutation for the zoom morph) — see prior design work.
+// Names are all blip-prefixed since this codebase already has top-level `pick()`.
+let blipPool=[], blipAngle=0, blipSpinning=false;
+let blipGeneration=0; // bumped whenever the user leaves — lets an in-flight frame loop detect it's stale and stop itself
+let blipHeat=[];
+const blipExcludedThisSession=new Set();
+let blipLastRatingMode=undefined;
+
+function getBlipCandidates(){
+  // One entry per distinct item per category — the most recent review of that
+  // item stands in for it (its scores, grade, stars, date). Pending reviews
+  // (expectations not yet completed) don't count as real experiences to offer up.
+  const byKey={};
+  savedReviews.filter(r=>!r.pending).forEach(r=>{
+    const key=r.catId+'::'+(r.item||'').trim().toLowerCase();
+    if(!byKey[key] || new Date(r.ts)>new Date(byKey[key].ts)) byKey[key]=r;
+  });
+  return Object.values(byKey).map(r=>{
+    const days=Math.floor((Date.now()-new Date(r.ts).getTime())/86400000);
+    return {
+      item:r.item, catId:r.catId, catLabel:r.catLabel, mode:r.mode,
+      axes:r.axes, scores:r.scores, total:r.total, max:r.max,
+      intensity:r.intensity, curStars:r.curStars, stars:r.stars,
+      days:Math.max(0,days), recordId:r.id
+    };
+  });
+}
+
+function openBlip(){
+  blipGeneration++; // invalidate any stray leftover loop before starting fresh
+  blipSpinning=false;
+  blipExcludedThisSession.clear();
+  document.getElementById('blip-go').textContent='blip it';
+  document.getElementById('blip-outcome').classList.remove('show-outcome');
+  document.getElementById('blip-outcome').style.opacity='0';
+  document.getElementById('blip-outcome').style.pointerEvents='none';
+  document.getElementById('blip-outcome').style.transform='scale(0.05)';
+  document.getElementById('blip-radar').style.opacity='1';
+  document.getElementById('blip-radar').style.transform='scale(1)';
+  populateBlipCategorySelect();
+  blipLastRatingMode=undefined;
+  blipRebuild();
+  showScreen('s-blip');
+}
+function closeBlip(){
+  blipGeneration++; // cancels any still-running spin animation
+  blipSpinning=false;
+  showScreen('s-cat');
+}
+
+function toggleBlipFilters(){
+  document.getElementById('blip-filters').classList.toggle('open');
+  document.getElementById('blip-filters-backdrop').classList.toggle('open');
+}
+
+function populateBlipCategorySelect(){
+  const sel=document.getElementById('blip-f-cat');
+  const cats=[...new Set(getBlipCandidates().map(d=>d.catId))]
+    .map(id=>registry.find(c=>c.id===id)).filter(Boolean);
+  sel.innerHTML='<option value="all">all categories</option>'
+    + cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+}
+
+function currentBlipCatMode(){
+  const catId=document.getElementById('blip-f-cat').value;
+  if(catId==='all') return null;
+  const cat=registry.find(c=>c.id===catId);
+  return cat?cat.mode:null;
+}
+
+function renderBlipRatingOptions(mode){
+  const sel=document.getElementById('blip-f-grade');
+  if(mode==='profile'){
+    sel.innerHTML=`
+      <option value="0" selected>any</option>
+      <option value="3">distinctive (3+)</option>
+      <option value="4">very distinctive (4+)</option>`;
+  } else {
+    sel.innerHTML=`
+      <option value="0">any</option>
+      <option value="15" selected>B or better</option>
+      <option value="20">A or better</option>
+      <option value="25">S only</option>`;
+  }
+}
+
+function blipGradeScore(rec){
+  return rec.max?Math.round((rec.total/rec.max)*25):0;
+}
+
+function blipRebuild(){
+  const catId=document.getElementById('blip-f-cat').value;
+  const mode=currentBlipCatMode();
+  if(mode!==blipLastRatingMode){ renderBlipRatingOptions(mode); blipLastRatingMode=mode; }
+  const min=+document.getElementById('blip-f-grade').value;
+
+  blipPool=getBlipCandidates().filter(d=>{
+    if(blipExcludedThisSession.has(d.recordId)) return false;
+    if(catId!=='all' && d.catId!==catId) return false;
+    if(mode==='profile') return (d.intensity||0)>=min;
+    if(d.mode==='profile') return true; // grade threshold doesn't apply to it
+    return blipGradeScore(d)>=min;
+  });
+
+  blipHeat=blipPool.map(()=>0);
+  document.getElementById('blip-hdr-count').textContent=blipPool.length+' options';
+  document.getElementById('blip-result').innerHTML=
+    `<div style="color:var(--text-4);font-size:0.75em">${blipPool.length} match your filters</div>`;
+  document.getElementById('blip-radar').classList.remove('blip-fadeout');
+  document.getElementById('blip-outcome').classList.remove('show-outcome');
+  const goBtn=document.getElementById('blip-go');
+  if(goBtn.textContent.startsWith('blip again')) goBtn.textContent=`blip again (${blipPool.length} left)`;
+  blipDraw(false,null);
+}
+
+function blipPosOf(i,n){
+  const a=(i/n)*Math.PI*2 - Math.PI/2;
+  const r=70+((i*37)%55);
+  return {x:150+r*Math.cos(a), y:150+r*Math.sin(a), a:a*180/Math.PI+90};
+}
+function blipPolar(deg){
+  const a=(deg-90)*Math.PI/180;
+  return {x:150+140*Math.cos(a), y:150+140*Math.sin(a)};
+}
+
+function blipDraw(locked, lockedTarget, pingIntensity){
+  pingIntensity=pingIntensity||0;
+  const n=blipPool.length;
+  let s=`<defs><radialGradient id="blipglow" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></radialGradient></defs>`;
+  s+=`<circle cx="150" cy="150" r="140" fill="url(#blipglow)"/>`;
+  [40,75,110,140].forEach((r,i)=>{
+    s+=`<circle cx="150" cy="150" r="${r}" fill="none" stroke="var(--border-2)"
+         stroke-width="${i===3?1:0.6}" opacity="${i===3?0.55:0.28}"/>`;
+  });
+  s+=`<line x1="150" y1="10" x2="150" y2="290" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>
+      <line x1="10" y1="150" x2="290" y2="150" stroke="var(--border)" stroke-width="0.5" opacity="0.4"/>`;
+
+  const TAIL=65;
+  for(let d=0; d<TAIL; d+=2){
+    const op=(1-d/TAIL)*(1-d/TAIL)*0.5;
+    const p1=blipPolar(blipAngle-d), p2=blipPolar(blipAngle-d-2);
+    s+=`<path d="M150,150 L${p1.x.toFixed(1)},${p1.y.toFixed(1)} A140,140 0 0,0 ${p2.x.toFixed(1)},${p2.y.toFixed(1)} Z"
+         fill="var(--accent)" opacity="${op.toFixed(3)}"/>`;
+  }
+  const bp=blipPolar(blipAngle);
+  s+=`<line x1="150" y1="150" x2="${bp.x.toFixed(1)}" y2="${bp.y.toFixed(1)}" stroke="var(--accent-light)" stroke-width="1.5" opacity="0.9"/>`;
+
+  blipPool.forEach((d,i)=>{
+    const p=blipPosOf(i,n);
+    const isLockedTarget=locked && lockedTarget===d;
+    const heat=blipHeat[i]||0;
+    let r=3+heat*2.2, op=Math.min(1,(0.15+heat*0.85)*2), fill='var(--accent)';
+
+    if(isLockedTarget){ r=8.5+pingIntensity*4.5; op=1; fill='var(--accent-light)'; }
+
+    s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" opacity="${op.toFixed(2)}"/>`;
+    if(isLockedTarget){
+      s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="13" fill="none" stroke="var(--accent)" stroke-width="1.5">
+            <animate attributeName="r" values="8;24;8" dur="1.3s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.9;0;0.9" dur="1.3s" repeatCount="indefinite"/>
+          </circle>`;
+    }
+    if(isLockedTarget && pingIntensity>0){
+      s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(11+pingIntensity*9).toFixed(1)}"
+           fill="none" stroke="var(--accent-light)" stroke-width="2" opacity="${(pingIntensity*0.9).toFixed(2)}"/>`;
+    }
+    if(isLockedTarget || heat>0.15){
+      s+=`<text x="${p.x.toFixed(1)}" y="${(p.y-13).toFixed(1)}" text-anchor="middle" font-size="9"
+           font-family="'Special Elite',monospace"
+           fill="${isLockedTarget?'var(--accent-light)':'var(--text-4)'}"
+           opacity="${isLockedTarget?1:Math.min(1,Math.max(0,heat-0.15)*2).toFixed(2)}">${d.item}</text>`;
+    }
+  });
+  document.getElementById('blip-radar').innerHTML=s;
+}
+
+function blipWeightFor(d){
+  const useRecency=document.getElementById('blip-f-recency').checked;
+  return useRecency ? Math.min(1, 0.25 + d.days/45) : 1;
+}
+function blipPick(){
+  const weights=blipPool.map(blipWeightFor);
+  const total=weights.reduce((a,b)=>a+b,0);
+  let r=Math.random()*total;
+  for(let i=0;i<blipPool.length;i++){ r-=weights[i]; if(r<=0) return blipPool[i]; }
+  return blipPool[blipPool.length-1];
+}
+
+function blipResetToRadarInstant(){
+  const radarEl=document.getElementById('blip-radar');
+  const outEl=document.getElementById('blip-outcome');
+  radarEl.style.transition='none'; outEl.style.transition='none';
+  radarEl.classList.remove('blip-fadeout');
+  radarEl.style.opacity='1'; radarEl.style.transform='scale(1)';
+  outEl.style.opacity='0'; outEl.style.pointerEvents='none'; outEl.style.transform='scale(0.05)';
+  void radarEl.offsetWidth;
+  radarEl.style.transition=''; outEl.style.transition='';
+}
+
+const BLIP_DEG_PER_MS = 360/1400;
+const BLIP_DEFAULT_DECAY = 0.014167;
+const BLIP_LINGER_DECAY_BY_SWEEP = {2:0.011333, 3:0.009444, 4:0.008095};
+const BLIP_POST_LOCK_SWEEPS = 2;
+
+function blipCrossedAngle(prevA,curA,dest){
+  if(curA>=prevA) return dest>=prevA && dest<=curA;
+  return dest>=prevA || dest<=curA;
+}
+
+function blipSpin(){
+  if(blipSpinning) return;
+  if(!blipPool.length){
+    if(document.getElementById('blip-outcome').classList.contains('show-outcome')){
+      document.getElementById('blip-final-modal').style.display='flex';
+    } else {
+      document.getElementById('blip-result').innerHTML=
+        `<div style="color:var(--text-4);font-size:0.8em">out of options — widen your filters</div>`;
+    }
+    return;
+  }
+  if(blipPool.length===1){
+    blipSpinning=true;
+    document.getElementById('blip-result').innerHTML='';
+    blipResetToRadarInstant();
+    blipFinishLock(blipPool[0]);
+    return;
+  }
+
+  blipSpinning=true;
+  document.getElementById('blip-result').innerHTML='';
+  blipResetToRadarInstant();
+
+  const target=blipPick();
+  const targetIdx=blipPool.indexOf(target);
+  const destA=blipPosOf(targetIdx,blipPool.length).a;
+  const startAngle=blipAngle;
+  const myGen=++blipGeneration;
+
+  let crossingCount=0;
+  let prevMod=((blipAngle%360)+360)%360;
+  let locked=false, lockedAngle=null;
+  let pingUntil=0;
+  const PING_DURATION_MS=350;
+  const customDecay={};
+
+  function decayAll(){
+    blipHeat = blipHeat.map((h,i)=>Math.max(0, h-(customDecay[i]!=null?customDecay[i]:BLIP_DEFAULT_DECAY)));
+  }
+  function illuminate(){
+    blipPool.forEach((d,i)=>{
+      const p=blipPosOf(i,blipPool.length);
+      if(((blipAngle-p.a)%360+360)%360 < 8) blipHeat[i]=1;
+    });
+  }
+
+  const t0=performance.now();
+  function frame(now){
+    if(myGen!==blipGeneration) return; // superseded — user left, or a new spin started
+    blipAngle = startAngle + BLIP_DEG_PER_MS*(now-t0);
+    const curMod=((blipAngle%360)+360)%360;
+
+    if(blipCrossedAngle(prevMod,curMod,destA)){
+      if(!locked){
+        crossingCount++;
+        if(BLIP_LINGER_DECAY_BY_SWEEP[crossingCount]!=null){
+          customDecay[targetIdx]=BLIP_LINGER_DECAY_BY_SWEEP[crossingCount];
+        }
+        if(crossingCount>=5){
+          locked=true;
+          lockedAngle=blipAngle;
+          blipHeat[targetIdx]=1;
+        }
+      } else {
+        pingUntil=now+PING_DURATION_MS;
+      }
+    }
+    prevMod=curMod;
+
+    decayAll();
+    illuminate();
+    if(locked) blipHeat[targetIdx]=1;
+
+    const pingIntensity = locked ? Math.max(0,(pingUntil-now)/PING_DURATION_MS) : 0;
+    blipDraw(locked, locked?target:null, pingIntensity);
+
+    if(locked && blipAngle-lockedAngle>=BLIP_POST_LOCK_SWEEPS*360 && now>=pingUntil){
+      blipFinishLock(target);
+      return;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function blipFinishLock(target){
+  blipSpinning=false;
+  const originIdx=blipPool.indexOf(target);
+  const originPos=blipPosOf(originIdx, blipPool.length);
+
+  blipExcludedThisSession.add(target.recordId);
+  blipPool=blipPool.filter(p=>p!==target);
+  blipHeat=blipPool.map(()=>0);
+
+  const ratingText = target.mode==='profile'
+    ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
+    : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
+  document.getElementById('blip-result').innerHTML=
+    `<div style="color:var(--accent);font-size:1.15em;font-weight:bold">${target.item}</div>
+     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">
+       ${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>`;
+  document.getElementById('blip-go').textContent=`blip again (${blipPool.length} left)`;
+  blipMorphToOutcome(target, originPos);
+}
+
+let blipOutcomeRecordId=null;
+function blipMorphToOutcome(target, originPos){
+  blipOutcomeRecordId=target.recordId;
+  const originPct=`${(originPos.x/300*100).toFixed(1)}% ${(originPos.y/300*100).toFixed(1)}%`;
+  const radarEl=document.getElementById('blip-radar');
+  const outEl=document.getElementById('blip-outcome');
+  radarEl.style.transformOrigin=originPct;
+  outEl.style.transformOrigin=originPct;
+
+  const rv=document.getElementById('blip-outcome-radar');
+  rv.innerHTML = target.scores ? radarSVG(target.axes, target.scores) : '';
+  const ratingText = target.mode==='profile'
+    ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
+    : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
+  document.getElementById('blip-outcome-info').innerHTML=
+    `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}</div>
+     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText}</div>`;
+
+  radarEl.classList.add('blip-fadeout');
+  radarEl.style.opacity='0'; radarEl.style.transform='scale(0.08)';
+  outEl.classList.add('show-outcome');
+  outEl.style.opacity='1'; outEl.style.pointerEvents='auto'; outEl.style.transform='scale(1)';
+}
+
+function blipViewFullReview(){
+  if(!blipOutcomeRecordId) return;
+  viewSavedReview(blipOutcomeRecordId);
 }
 
 function openThemePage(){
