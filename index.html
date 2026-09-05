@@ -508,7 +508,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.01</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.02</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3322,6 +3322,7 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.02',notes:['copyright notice added to the app and source','PWA support — installable to home screen, works offline for the app itself (map/location features still need a connection)']},
 {v:'3.01',notes:['Blip \u2014 a new tool on the main page for when you can\u2019t decide. Picks randomly from your own reviews, filterable by category and rating, with a radar-sweep animation','favors things you haven\u2019t picked recently (adjustable)','each pick is excluded from repeating for the rest of the session, whether from "blip again" or picking down to the last option','pulls real data from your saved reviews \u2014 adapts to grade-based or character/intensity-based categories automatically']},
 {v:'3.00',notes:['21 new achievements covering expectations, themes, photos, CSV export, reminders and more — 194 total','expectation achievements are computed from your stored reviews, so past pairs count retroactively']},
 {v:'2.99',notes:['pending reviews now sort to the top and can be filtered with a pending only option','sharing is blocked on a pending review until you finish it']},
