@@ -1,3 +1,10 @@
+<!--
+  Review Radar
+  Copyright (c) 2026 David Clunie. All rights reserved.
+  This source code is proprietary and confidential. No part of this file may be
+  reproduced, distributed, or used to create derivative works without express
+  written permission from the copyright holder.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +12,12 @@
 <meta name="viewport" content="width=240, initial-scale=1, user-scalable=no">
 <title>Review Radar</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 92'%3E%3Cpolygon points='50,88.25 8.6,59.35 25.1,7.65 74.9,7.65 91.4,59.35' fill='%23F2A623'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#141412">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Review Radar">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -1022,8 +1035,9 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
     <div style="height:16px"></div>
     <div style="text-align:center;font-size:0.7em;color:var(--text-4)">
-      Review Radar <span id="settings-version-tag"></span> \u00b7 <span tabindex="0" style="color:var(--accent);text-decoration:underline;cursor:pointer" onclick="closeBackupModal();openChangelog()">what's new</span>
+      Review Radar <span id="settings-version-tag"></span> · <span tabindex="0" style="color:var(--accent);text-decoration:underline;cursor:pointer" onclick="closeBackupModal();openChangelog()">what's new</span>
     </div>
+    <div style="text-align:center;font-size:0.62em;color:var(--text-5);margin-top:4px">© 2026 David Clunie. All rights reserved.</div>
     <div tabindex="0" style="text-align:center;padding:10px;color:var(--text-4);font-size:0.8em;margin-top:14px;cursor:pointer" onclick="closeBackupModal()">close</div>
   </div>
 </div>
@@ -6030,6 +6044,12 @@ if(savedReviews.length>=5){
   }
 }
 })();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(e=>console.error('Review Radar: service worker registration failed —',e));
+  });
+}
 </script>
 </body>
 </html>
