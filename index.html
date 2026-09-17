@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.08</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.09</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3452,6 +3452,10 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.09',notes:[
+  'undid the last update\'s decision to drop every attached photo from sharing by default \u2014 that traded away something people actually want to work around a suspected (never confirmed) reliability issue',
+  'sharing now always tries to include every attached photo first, and only reduces the count if this specific device genuinely can\'t handle that many \u2014 so most people should now see all their photos shared, not none'
+]},
 {v:'3.08',notes:[
   'removed the separate note icon \u2014 tapping the radar already shows notes, so it was redundant',
   'fixed a real bug where a failed share on a brand-new review silently fell through to downloading files instead of reporting the failure \u2014 you would\'ve seen \"files downloaded\" with zero indication the actual share attempt had failed',
@@ -5141,30 +5145,29 @@ async function shareViewedReview(btn){
     // The payload .txt has been reliable as a file attachment across every test — keep it
     // that way rather than trusting the 'text' field, which some share targets (Gmail
     // included, it appears) don't reliably populate the compose body from when files are
-    // also present. Additional photos beyond the one baked into the composite are
-    // deliberately NOT attached separately — sharing several files at once has proven
-    // unreliable on Android, and is the most likely cause of "share unavailable" on
-    // reviews with multiple photos specifically.
-    const files=[];
-    if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
-    files.push(new File([msg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
+    // also present.
+    const baseFiles=[];
+    if(result) baseFiles.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
+    baseFiles.push(new File([msg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
+    const photoFiles=attachedPhotos.map((photo,i)=>
+      new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'})
+    );
 
     if(navigator.share){
-      try{
-        const canShareFiles=files.length&&navigator.canShare&&navigator.canShare({files});
-        console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles,'| file count:',files.length,'| used pre-gen:',viewPreGenId===rec.id);
-        const shareData=canShareFiles?{title,text,files}:{title,text};
-        await navigator.share(shareData);
+      const outcome=await shareWithPhotoFallback(baseFiles, photoFiles, {title,text});
+      if(outcome.aborted) return;
+      if(outcome.ok){
         bumpCounter('rr_share_count'); evaluateAchievements();
-        if(canShareFiles && !result){
-          btnFeedback(btn,'shared \u2014 image missing','var(--accent-dark)','#1a2e0a',3000);
-        } else if(!canShareFiles){
+        if(outcome.textOnly){
           btnFeedback(btn,'shared text only \u2014 files unsupported here','var(--accent-dark)','#1a2e0a',3000);
+        } else if(outcome.photosIncluded<photoFiles.length){
+          btnFeedback(btn,`shared \u2014 ${outcome.photosIncluded}/${photoFiles.length} photos`,'var(--accent-dark)','#1a2e0a',3000);
+        } else if(!result){
+          btnFeedback(btn,'shared \u2014 image missing','var(--accent-dark)','#1a2e0a',3000);
         } else {
           btnFeedback(btn,'\u2713 shared!','var(--good)','#1a2e0a',2500);
         }
-      }catch(err){
-        if(err.name==='AbortError') return;
+      } else {
         btnFeedback(btn,'share unavailable','var(--text-5)','var(--text)',2000);
       }
       return;
@@ -5568,6 +5571,42 @@ function btnFeedback(btn,html,bg,col,ms){
 }
 
 // ── SHARE ──────────────────────────────────────────────────────────────
+// Tries to share with every photo included first — that's what people actually want
+// — and only falls back to fewer files if THIS device genuinely can't handle that
+// many, rather than assuming a limit exists and dropping photos unconditionally.
+// Returns {ok, photosIncluded, aborted} so the caller can give accurate feedback.
+async function shareWithPhotoFallback(baseFiles, photoFiles, shareDataBase){
+  const steps=[...new Set([photoFiles.length, Math.ceil(photoFiles.length/2), Math.min(2,photoFiles.length), 0])]
+    .filter(n=>n>=0 && n<=photoFiles.length)
+    .sort((a,b)=>b-a); // largest first — always try to include everything before giving anything up
+  let lastErr=null, triedAnyShare=false;
+  for(const n of steps){
+    const files=[...baseFiles, ...photoFiles.slice(0,n)];
+    const canShareFiles=files.length && navigator.canShare && navigator.canShare({files});
+    if(!canShareFiles) continue; // this exact combination isn't shareable at all here — try fewer
+    triedAnyShare=true;
+    try{
+      await navigator.share({...shareDataBase, files});
+      return {ok:true, photosIncluded:n};
+    }catch(err){
+      if(err.name==='AbortError') return {ok:false, aborted:true};
+      lastErr=err; // this file count didn't work on this device — try fewer before giving up
+    }
+  }
+  // Files weren't shareable at any count on this browser (not a photo-count problem
+  // at all) — fall back to a plain text share rather than giving up entirely, matching
+  // what this always did before any of the photo-count logic above ever ran.
+  try{
+    await navigator.share({title:shareDataBase.title, text:shareDataBase.text});
+    return {ok:true, photosIncluded:0, textOnly:true};
+  }catch(err){
+    if(err.name==='AbortError') return {ok:false, aborted:true};
+    lastErr=err;
+  }
+  if(lastErr) console.error('Review Radar: share failed at every attempt, including text-only —',lastErr);
+  return {ok:false, aborted:false};
+}
+
 async function shareReview(btn){
   clearTimeout(notePersistTimer); persistCurrentNoteToRecord(); // flush — don't lose a note typed just before tapping share
   const origHTML=btn.innerHTML;
@@ -5598,42 +5637,39 @@ async function shareReview(btn){
     btn.innerHTML=origHTML;
   }
 
-  // The payload .txt has been reliable as a file attachment across every test — keep it
-  // that way rather than trusting the 'text' field, which some share targets (Gmail
-  // included, it appears) don't reliably populate the compose body from when files are
-  // also present. The composite image already has the first photo baked in, so
-  // additional photos are deliberately NOT attached as separate files — sharing many
-  // files at once has proven unreliable on Android throughout this app's testing, and
-  // was very likely the actual cause of "share unavailable" on reviews with several photos.
-  const files=[];
-  if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
-  files.push(new File([payloadMsg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
+  // Try to include every attached photo first — that's what people actually want.
+  // Only fall back to fewer if THIS device genuinely can't handle that many, rather
+  // than assuming a limit exists and dropping photos unconditionally by default.
+  const baseFiles=[];
+  if(result) baseFiles.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
+  baseFiles.push(new File([payloadMsg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
+  const photoFiles=attachedPhotos.map((photo,i)=>
+    new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'})
+  );
 
   if(navigator.share){
-    try{
-      const canShareFiles=files.length&&navigator.canShare&&navigator.canShare({files});
-      console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles,'| file count:',files.length);
-      const shareData=canShareFiles?{title,text,files}:{title,text};
-      await navigator.share(shareData);
+    const outcome=await shareWithPhotoFallback(baseFiles, photoFiles, {title,text});
+    if(outcome.aborted) return;
+    if(outcome.ok){
       bumpCounter('rr_share_count'); evaluateAchievements();
-      if(canShareFiles && !result){
-        btnFeedback(btn,'shared \u2014 image missing','var(--accent-dark)','#1a2e0a',3000);
-      } else if(!canShareFiles){
+      if(outcome.textOnly){
         btnFeedback(btn,'shared text only \u2014 files unsupported here','var(--accent-dark)','#1a2e0a',3000);
+      } else if(outcome.photosIncluded<photoFiles.length){
+        btnFeedback(btn,`shared \u2014 ${outcome.photosIncluded}/${photoFiles.length} photos`,'var(--accent-dark)','#1a2e0a',3000);
+      } else if(!result){
+        btnFeedback(btn,'shared \u2014 image missing','var(--accent-dark)','#1a2e0a',3000);
       } else {
         btnFeedback(btn,'\u2713 shared!','var(--good)','#1a2e0a',2500);
       }
       return;
-    }catch(err){
-      if(err.name==='AbortError') return;
-      // This used to swallow the error and fall through to downloading files
-      // unconditionally — meaning a failed share always looked like "it just
-      // downloaded 2 files" with no indication anything had gone wrong at all.
-      btnFeedback(btn,'share unavailable','var(--text-5)','var(--text)',2000);
-      return;
     }
+    // Every file-count attempt failed outright (not just missing canShare support) —
+    // this used to silently fall through to downloading with zero indication anything
+    // had gone wrong; now it actually reports the failure.
+    btnFeedback(btn,'share unavailable','var(--text-5)','var(--text)',2000);
+    return;
   }
-  // Fallback: download
+  // Fallback: download (no navigator.share at all on this browser)
   if(result) downloadBlob(result.blob,`review_radar_${cat.id}_${stamp}.${result.ext}`);
   downloadBlob(new Blob([payloadMsg],{type:'text/plain'}),`review_radar_${cat.id}_${stamp}_payload.txt`);
   btnFeedback(btn,'files downloaded','var(--text-5)','var(--text)',2500);
