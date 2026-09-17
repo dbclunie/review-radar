@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.10</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.11</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3452,6 +3452,10 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.11',notes:[
+  'found a second, separate share bug: creating a brand-new review still awaited address lookup and image generation before sharing \u2014 the same activation-window problem fixed elsewhere weeks ago, but never applied to this specific screen',
+  'confirmed Chromium enforces a hard cap of 10 files and 50MB total on shared files \u2014 photo counts are now chosen against that real limit directly (using actual file sizes) rather than hoping a compatibility check would catch it'
+]},
 {v:'3.10',notes:[
   'fixed \"share unavailable\" reappearing after the last update \u2014 the retry-with-fewer-photos approach called navigator.share() multiple times per tap, but that call consumes the browser\'s one-shot sharing permission the instant it\'s invoked, success or failure. the first attempt was silently dooming every retry after it. now the photo count is decided in advance (a check that doesn\'t consume that permission) and share is invoked exactly once'
 ]},
@@ -5575,24 +5579,38 @@ function btnFeedback(btn,html,bg,col,ms){
 
 // ── SHARE ──────────────────────────────────────────────────────────────
 // navigator.share() consumes the browser's transient user activation the instant
-// it's called — whether it succeeds OR throws (this is spec-defined behavior, not
-// a guess: see the Web Share API spec and its web-platform-tests). That means a
-// retry loop that calls share() multiple times per tap is fundamentally broken:
-// the first attempt burns the activation, so every subsequent "safer" retry in the
-// same gesture fails with NotAllowedError regardless of file count — which is
-// exactly what turned this into a reliable failure instead of a rare one.
+// it's called — whether it succeeds OR throws (spec-defined, confirmed against the
+// Web Share API spec and its web-platform-tests). A retry loop that calls share()
+// multiple times per tap is fundamentally broken: the first attempt burns the
+// activation, dooming every "safer" retry after it regardless of file count.
 //
-// The fix: decide the file count ENTIRELY using navigator.canShare() checks first
-// (canShare does not require or consume activation — that's specifically what it's
-// for), then call the real share() exactly once with whatever was chosen.
+// Separately, Chromium enforces a documented hard cap of 10 files and 50MB total
+// on navigator.share()'s files array (confirmed against a Chromium source commit,
+// not assumed) — canShare() should reflect this, but rather than hope a heuristic
+// catches every edge case, the candidate counts below are computed directly against
+// these actual documented limits, then double-checked with canShare(), and share()
+// is invoked exactly once with whichever count survives both checks.
 // Returns {ok, photosIncluded, aborted} so the caller can give accurate feedback.
+const SHARE_MAX_FILES=10, SHARE_MAX_BYTES=45*1024*1024; // 45MB, a safety margin under the 50MB cap
+
 async function shareWithPhotoFallback(baseFiles, photoFiles, shareDataBase){
-  const steps=[...new Set([photoFiles.length, Math.ceil(photoFiles.length/2), Math.min(2,photoFiles.length), 0])]
-    .filter(n=>n>=0 && n<=photoFiles.length)
-    .sort((a,b)=>b-a); // largest first — pick the most photos canShare will accept
+  const baseSize=baseFiles.reduce((s,f)=>s+f.size,0);
+  const baseBudget=SHARE_MAX_FILES-baseFiles.length;
+
+  // Largest N (0..photoFiles.length) that fits both the file-count cap and the
+  // total-size cap, computed directly from actual file sizes.
+  let maxN=0;
+  for(let n=0; n<=Math.min(baseBudget,photoFiles.length); n++){
+    const size=baseSize+photoFiles.slice(0,n).reduce((s,f)=>s+f.size,0);
+    if(size<=SHARE_MAX_BYTES) maxN=n; else break;
+  }
+
+  const candidateCounts=[...new Set([maxN, Math.ceil(maxN/2), Math.min(2,maxN), 0])]
+    .filter(n=>n>=0 && n<=maxN)
+    .sort((a,b)=>b-a);
 
   let chosenFiles=null, chosenN=0;
-  for(const n of steps){
+  for(const n of candidateCounts){
     const files=[...baseFiles, ...photoFiles.slice(0,n)];
     if(files.length && navigator.canShare && navigator.canShare({files})){
       chosenFiles=files; chosenN=n; break;
@@ -5617,33 +5635,17 @@ async function shareWithPhotoFallback(baseFiles, photoFiles, shareDataBase){
 
 async function shareReview(btn){
   clearTimeout(notePersistTimer); persistCurrentNoteToRecord(); // flush — don't lose a note typed just before tapping share
-  const origHTML=btn.innerHTML;
-  // If a location is set but its address hasn't resolved yet (reverse geocoding runs
-  // in the background and can lose the race if you share quickly), wait for it now —
-  // otherwise the payload, text, and image all fall back to raw coordinates.
-  if(curLocation && !curLocation.address){
-    btn.innerHTML='finding address\u2026';
-    const addr=await reverseGeocode(curLocation.lat,curLocation.lng);
-    if(addr && curLocation) curLocation.address=addr;
-    btn.innerHTML=origHTML;
-  }
-
+  // Never await geocoding or image generation here — navigator.share() must fire
+  // within moments of the actual tap or the browser revokes permission. This
+  // function still had the old await-before-share pattern that was already fixed
+  // in shareViewedReview weeks ago — it just never got applied here too. Use
+  // whatever's already finished in the background; proceed without it if not.
   const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
   const stamp=preGeneratedStamp||ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
   const title=`Review Radar \u00b7 ${cat.label}${curItem?' \u00b7 '+curItem:''}`;
   const payloadMsg=preGeneratedMsg||msg;
   const text=buildHumanBody(cat,payload,scoreText,null);
-
-  // Use the pre-generated image if it's ready. If not, generate it now rather than
-  // sharing without it. The photo (if any) is already baked into this composite image,
-  // so it doesn't need to be shared separately.
-  let result=preGeneratedFile;
-  if(!result){
-    btn.innerHTML='preparing image\u2026';
-    const quoteEl=document.getElementById('conf-quote');
-    result=await generateReviewFileSafe(cat,scoreText,attachedPhotos[0]||null,curLocation,quoteEl?quoteEl.textContent:null,cat.stars?curStars:null,curMapSnapshot,curNote||null);
-    btn.innerHTML=origHTML;
-  }
+  const result=preGeneratedFile;
 
   // Try to include every attached photo first — that's what people actually want.
   // Only fall back to fewer if THIS device genuinely can't handle that many, rather
