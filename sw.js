@@ -1,6 +1,10 @@
 // Review Radar service worker — enables offline use and "Add to Home Screen".
-// Bump CACHE_NAME whenever index.html changes so clients pick up the new version.
-const CACHE_NAME = 'review-radar-v1';
+//
+// CACHE_NAME is bumped on this push specifically to purge whatever stale index.html
+// is already sitting in existing installs' caches (the real bug this fixes: the old
+// version cached the HTML itself cache-first with a CACHE_NAME that never changed,
+// so updates never reached anyone who'd already visited once).
+const CACHE_NAME = 'review-radar-v2';
 
 const APP_SHELL = [
   './',
@@ -33,8 +37,7 @@ self.addEventListener('fetch', event => {
   const url = event.request.url;
 
   // Never cache live network calls — map tiles, geocoding/search, and static map
-  // snapshots all need to hit the network fresh every time. Caching these would
-  // mean showing stale or wrong map data, which is worse than just failing offline.
+  // snapshots all need to hit the network fresh every time.
   const isLiveMapOrGeoCall =
     url.includes('nominatim.openstreetmap.org') ||
     url.includes('tile.openstreetmap.org') ||
@@ -44,22 +47,42 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // App shell + libraries: cache-first, so the app opens instantly and works
-  // offline. Falls back to network for anything not already cached.
+  // The app's own HTML document is where every real update lives, so it must never
+  // be served stale-by-default. Network-first: always try the live network copy
+  // when online, and only fall back to whatever's cached if the network fails
+  // (genuinely offline). This is the actual fix — CACHE_NAME rotation alone only
+  // clears the *existing* stale copy, it doesn't stop this same bug recurring on
+  // the next update if the document itself stayed cache-first.
+  const isAppDocument =
+    event.request.mode === 'navigate' ||
+    url.endsWith('/') || url.endsWith('/index.html');
+  if (isAppDocument) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Genuinely static assets (icons, manifest, pinned-version CDN libraries) rarely
+  // if ever change, so cache-first here is correct and keeps the app opening fast.
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
       return fetch(event.request).then(response => {
-        // Only cache successful, same-origin-or-known-CDN responses
         if (response && response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
       });
-      // No offline fallback here — 'cached' is already known to be empty at this
-      // point, so silently returning it again would be dead code, not a real
-      // fallback. A genuine offline-first fallback page could be added later.
     })
   );
 });
