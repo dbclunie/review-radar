@@ -398,8 +398,10 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 /* axis bar row */
 .bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .bar-label{width:82px;flex-shrink:0;color:var(--text-2);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-track{flex:1;height:5px;background:var(--surface-2);border-radius:3px}
+.bar-track{position:relative;flex:1;height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden}
 .bar-fill{display:block;height:5px;background:var(--accent);border-radius:3px;transition:width .15s}
+.bar-segments{position:absolute;inset:0;pointer-events:none;
+  background-image:repeating-linear-gradient(to right, transparent 0, transparent calc(20% - 1px), rgba(0,0,0,0.35) calc(20% - 1px), rgba(0,0,0,0.35) 20%);}
 .bar-val{width:14px;flex-shrink:0;text-align:right;font-size:12px}
 .bar-ticks{display:flex;align-items:center;gap:6px;margin:2px 0 8px}
 .bar-ticks-spacer{width:82px;flex-shrink:0}
@@ -515,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.04</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.05</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -657,12 +659,13 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div id="blip-outcome" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transform:scale(0.05);transform-origin:150px 150px;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1)">
       <svg viewBox="0 0 300 300" style="width:100%;max-width:260px" id="blip-outcome-radar"></svg>
       <div id="blip-outcome-info" style="text-align:center;margin-top:6px"></div>
-      <div tabindex="0" class="btn" style="margin-top:10px;padding:6px 14px;font-size:0.75em" id="blip-view-full-btn" onclick="blipViewFullReview()">view full review</div>
     </div>
     <div id="blip-result" style="text-align:center;min-height:40px;margin-top:6px"></div>
   </div>
 
-  <div style="display:flex;gap:8px;margin-top:10px;flex-shrink:0">
+  <div tabindex="0" class="btn" style="display:none;margin-bottom:8px;padding:8px;font-size:0.8em;text-align:center;flex-shrink:0" id="blip-view-full-btn" onclick="blipViewFullReview()">view full review</div>
+
+  <div style="display:flex;gap:8px;margin-top:0;flex-shrink:0">
     <button class="btn" style="flex:1" onclick="closeBlip()">back</button>
     <button class="btn primary" style="flex:2" id="blip-go" onclick="blipSpin()">blip it</button>
   </div>
@@ -885,7 +888,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div id="view-date" style="font-size:0.65em;color:var(--text-4);margin-bottom:3px"></div>
     <div id="view-bars" style="margin-bottom:1px"></div>
     <div class="divider" style="margin:3px 0"></div>
-    <div id="view-radar" style="margin:1px auto;max-width:170px"></div>
+    <div id="view-radar" style="margin:1px auto;max-width:170px;cursor:pointer" onclick="openRadarModal()"></div>
     <div id="view-expect-gap" style="display:none;font-size:0.7em;text-align:center;margin-top:3px"></div>
     <div class="divider" style="margin:3px 0"></div>
     <div id="view-result"></div>
@@ -909,11 +912,22 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- SECRET STREAK CALENDAR PAGE -->
+<!-- RADAR MODAL — tapping the small radar opens this: a bigger view, plus the
+     review's note underneath if it has one. -->
+<div id="radar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:550;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeRadarModal()">
+  <div style="background:var(--surface);border:0.5px solid var(--border-2);border-radius:10px;padding:16px;max-width:380px;width:100%;max-height:88vh;overflow-y:auto">
+    <div id="radar-modal-content"></div>
+    <div id="radar-modal-note" style="display:none;margin-top:12px;font-size:0.8em;color:var(--text-2);background:var(--bg-deep);border-radius:6px;padding:10px;line-height:1.4"></div>
+    <div tabindex="0" class="btn" style="width:100%;text-align:center;margin-top:12px" onclick="closeRadarModal()">close</div>
+  </div>
+</div>
+
 <!-- PHOTO VIEWER — window.open() with a data: URL is blocked by mobile Chrome's
      security policy (lands on a blank about:blank tab), so full-size viewing has
      to happen in-app instead of a new tab. -->
-<div id="photo-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:600;align-items:center;justify-content:center;padding:20px" onclick="closePhotoViewer()">
+<div id="photo-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:600;align-items:center;justify-content:center;padding:20px" onclick="if(!photoViewerJustSwiped) closePhotoViewer()">
   <img id="photo-viewer-img" style="max-width:100%;max-height:100%;border-radius:6px;object-fit:contain">
+  <div id="photo-viewer-counter" style="position:absolute;bottom:20px;left:0;right:0;text-align:center;color:#ccc;font-size:0.8em;font-family:'Special Elite',monospace"></div>
   <span tabindex="0" style="position:absolute;top:16px;right:20px;color:#fff;font-size:1.6em;cursor:pointer" onclick="closePhotoViewer()">&times;</span>
 </div>
 
@@ -1753,13 +1767,73 @@ let scores = {};
 let dialIdx = 0;
 const SCALE = 5;
 
-function openPhotoViewer(url){
-  document.getElementById('photo-viewer-img').src=url;
+function openRadarModal(){
+  const rec=savedReviews.find(r=>r.id===viewingReviewId);
+  if(!rec) return;
+  const svg=rec.expectedScores?compareRadarSVG(rec.axes,rec.expectedScores,rec.scores):radarSVG(rec.axes,rec.scores);
+  document.getElementById('radar-modal-content').innerHTML=svg;
+  const noteEl=document.getElementById('radar-modal-note');
+  if(rec.note){ noteEl.style.display='block'; noteEl.textContent=rec.note; }
+  else { noteEl.style.display='none'; }
+  document.getElementById('radar-modal').style.display='flex';
+}
+function closeRadarModal(){
+  document.getElementById('radar-modal').style.display='none';
+}
+
+let photoViewerUrls=[], photoViewerIndex=0;
+let currentViewPhotoUrls=[]; // scoped to whichever review is currently open in s-view
+
+let photoViewerJustSwiped=false;
+(function setupPhotoViewerSwipe(){
+  const el=document.getElementById('photo-viewer');
+  let startX=0, startY=0;
+  el.addEventListener('touchstart',e=>{
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+    photoViewerJustSwiped=false;
+  },{passive:true});
+  el.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=e.changedTouches[0].clientY-startY;
+    // require a mostly-horizontal, deliberate drag so it doesn't fire on a vertical
+    // scroll attempt or a simple tap
+    if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.5){
+      photoViewerJustSwiped=true;
+      if(dx<0) photoViewerNext(); else photoViewerPrev();
+      setTimeout(()=>{ photoViewerJustSwiped=false; },50);
+    }
+  },{passive:true});
+})();
+
+function openPhotoViewer(urls,startIndex){
+  // Accepts either a single url (old call sites) or the full array for this
+  // specific review, so swiping only ever moves within that one review's photos.
+  photoViewerUrls=Array.isArray(urls)?urls:[urls];
+  photoViewerIndex=startIndex||0;
+  renderPhotoViewer();
   document.getElementById('photo-viewer').style.display='flex';
+}
+function renderPhotoViewer(){
+  document.getElementById('photo-viewer-img').src=photoViewerUrls[photoViewerIndex];
+  const counter=document.getElementById('photo-viewer-counter');
+  if(counter){
+    counter.textContent=photoViewerUrls.length>1?`${photoViewerIndex+1} / ${photoViewerUrls.length}`:'';
+  }
+}
+function photoViewerNext(){
+  if(photoViewerUrls.length<2) return;
+  photoViewerIndex=(photoViewerIndex+1)%photoViewerUrls.length;
+  renderPhotoViewer();
+}
+function photoViewerPrev(){
+  if(photoViewerUrls.length<2) return;
+  photoViewerIndex=(photoViewerIndex-1+photoViewerUrls.length)%photoViewerUrls.length;
+  renderPhotoViewer();
 }
 function closePhotoViewer(){
   document.getElementById('photo-viewer').style.display='none';
   document.getElementById('photo-viewer-img').src='';
+  photoViewerUrls=[]; photoViewerIndex=0;
 }
 
 // Shared 0-through-SCALE tick/number scale shown once below a group of axis bars —
@@ -1827,10 +1901,10 @@ function radarSVG(axes, scores){
     const anch = p[0]<cx-4?'end':p[0]>cx+4?'start':'middle';
     const active = dialIdx===i;
     const label=truncateLabel(a);
-    const fs=label.length>8?9:11;
+    const fs=label.length>6?9:10;
     const isTrunc=label!==a;
     const titleTag=isTrunc?`<title>${a}</title>`:'';
-    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="${active?'var(--text)':'var(--text-3)'}" font-family="'Special Elite',monospace" font-weight="${active?'600':'400'}"${isTrunc?` data-full="${a}" onclick="showAxisLabelTooltip(event)" style="cursor:pointer"`:''}>${titleTag}${label}</text>`;
+    const scoreVal=scores[a]!=null?scores[a]:0;    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="${active?'var(--text)':'var(--text-3)'}" font-family="'Special Elite',monospace" font-weight="${active?'600':'400'}"${isTrunc?` data-full="${a}" onclick="showAxisLabelTooltip(event)" style="cursor:pointer"`:''}>${titleTag}${label} (${scoreVal})</text>`;
   });
   // outer scale label
   const tp=pt(0,rMax); svg+=`<text x="${tp[0]+3}" y="${tp[1]}" font-size="10" fill="var(--text-5)" font-family="'Special Elite',monospace">${SCALE}</text>`;
@@ -2292,7 +2366,7 @@ function renderConfirm(){
     const v=scores[a]||0;
     bars.innerHTML+=`<div class="bar-row">
       <span class="bar-label">${a}</span>
-      <span class="bar-track"><span class="bar-fill" style="width:${v/SCALE*100}%"></span></span>
+      <span class="bar-track"><span class="bar-fill" style="width:${v/SCALE*100}%"></span><span class="bar-segments"></span></span>
       <span class="bar-val">${v}</span>
     </div>`;
   });
@@ -3378,6 +3452,15 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.05',notes:[
+  'fixed \"share unavailable\" for real this time \u2014 the previous fix still awaited slow work before sharing in the common case; now it never waits, sharing with whatever is ready rather than risking failure',
+  'notes moved behind a dedicated note icon next to the score (only shown when a review has one) and behind tapping the radar itself \u2014 both open the same view',
+  'tapping the radar now also opens an enlarged view',
+  'radar axis labels now show the actual score in parentheses next to each category',
+  'score bars now have thermometer-style segment marks directly on the bar, in addition to the 0\u20135 scale below',
+  'viewing a photo now supports swiping left/right to move through that review\'s other photos, with a position counter',
+  'fixed Blip\'s \"view full review\" button overlapping the outcome text on shorter screens \u2014 moved it into its own row above the back/blip-again buttons'
+]},
 {v:'3.04',notes:[
   'fixed the service worker serving a stale, cached copy of the app forever \u2014 it was caching the app itself the same cache-first way as truly static files, so updates never reached anyone who\'d already opened the app once. the app document now always checks the network first and only falls back to the cached copy when genuinely offline'
 ]},
@@ -3565,6 +3648,7 @@ function openBlip(){
   document.getElementById('blip-outcome').style.transform='scale(0.05)';
   document.getElementById('blip-radar').style.opacity='1';
   document.getElementById('blip-radar').style.transform='scale(1)';
+  document.getElementById('blip-view-full-btn').style.display='none';
   populateBlipCategorySelect();
   blipLastRatingMode=undefined;
   blipRebuild();
@@ -3723,6 +3807,7 @@ function blipResetToRadarInstant(){
   radarEl.classList.remove('blip-fadeout');
   radarEl.style.opacity='1'; radarEl.style.transform='scale(1)';
   outEl.style.opacity='0'; outEl.style.pointerEvents='none'; outEl.style.transform='scale(0.05)';
+  document.getElementById('blip-view-full-btn').style.display='none';
   void radarEl.offsetWidth;
   radarEl.style.transition=''; outEl.style.transition='';
 }
@@ -3864,6 +3949,7 @@ function blipMorphToOutcome(target, originPos){
   radarEl.style.opacity='0'; radarEl.style.transform='scale(0.08)';
   outEl.classList.add('show-outcome');
   outEl.style.opacity='1'; outEl.style.pointerEvents='auto'; outEl.style.transform='scale(1)';
+  document.getElementById('blip-view-full-btn').style.display='block';
 }
 
 function blipViewFullReview(){
@@ -4834,8 +4920,10 @@ function compareRadarSVG(axes,scoresA,scoresB){
     const p=pt(i,lblR);
     const anch=p[0]<cx-4?'end':p[0]>cx+4?'start':'middle';
     const label=truncateLabel(a);
-    const fs=label.length>8?9:11;
-    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="var(--text-3)" font-family="'Special Elite',monospace">${label}</text>`;
+    const fs=label.length>6?9:10;
+    const expVal=scoresA[a]!=null?scoresA[a]:0;
+    const actVal=(scoresB&&scoresB[a])!=null?scoresB[a]:0;
+    svg+=`<text x="${p[0]}" y="${p[1]+4}" text-anchor="${anch}" font-size="${fs}" fill="var(--text-3)" font-family="'Special Elite',monospace">${label} (${expVal}\u2192${actVal})</text>`;
   });
 
   svg+='</svg>';
@@ -4888,13 +4976,8 @@ function viewSavedReview(id){
   }
   else locEl.textContent='';
 
-  const noteEl=document.getElementById('view-note');
-  if(rec.note){
-    noteEl.style.display='block';
-    noteEl.textContent=rec.note;
-  } else {
-    noteEl.style.display='none';
-  }
+  // note display now lives behind the note icon / radar tap (openRadarModal), not
+  // shown inline here — avoids showing the same text in two places at once
 
   const bars=document.getElementById('view-bars');
   bars.innerHTML='';
@@ -4902,7 +4985,7 @@ function viewSavedReview(id){
     const v=rec.scores[a]||0;
     bars.innerHTML+=`<div class="bar-row">
       <span class="bar-label">${a}</span>
-      <span class="bar-track"><span class="bar-fill" style="width:${v/SCALE*100}%"></span></span>
+      <span class="bar-track"><span class="bar-fill" style="width:${v/SCALE*100}%"></span><span class="bar-segments"></span></span>
       <span class="bar-val">${v}</span>
     </div>`;
   });
@@ -4929,6 +5012,10 @@ function viewSavedReview(id){
   dialIdx=savedDialIdx;
 
   const starMid=rec.stars&&rec.curStars?`<div style="margin:0 10px">${starSVG(5,rec.curStars,20,null)}</div>`:'';
+  const noteIcon=rec.note?`<div tabindex="0" style="text-align:center;cursor:pointer" onclick="openRadarModal()">
+      <div style="font-size:1.3em;line-height:1">\ud83d\udcdd</div>
+      <div class="stat-label">note</div>
+    </div>`:'';
   const res=document.getElementById('view-result');
   if(rec.mode==='review'){
     const gr=grade(rec.total,rec.max);
@@ -4936,21 +5023,25 @@ function viewSavedReview(id){
       <div class="stat-block" style="flex:none;text-align:center"><div class="stat-label">total</div><div class="stat-val" style="color:${gr.col}">${rec.total}<span style="font-size:13px;color:var(--text-4)">/${rec.max}</span></div></div>
       ${starMid}
       <div class="grade-box" style="border:1.5px solid ${gr.col}"><div class="grade-letter" style="color:${gr.col}">${gr.g}</div><div class="grade-range">${gr.range}</div></div>
+      ${noteIcon}
     </div>`;
   } else {
     res.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:10px">
       <div class="stat-block" style="flex:none;text-align:center"><div class="stat-label">intensity</div><div class="stat-val" style="color:var(--accent)">${rec.intensity}</div></div>
       ${starMid}
       <div class="stat-block" style="flex:none;text-align:center"><div class="stat-label">harmony</div><div class="stat-val" style="color:${rec.harmony<=2?'var(--bad)':'var(--good)'}">${rec.harmony}</div></div>
+      ${noteIcon}
     </div>`;
   }
 
-  // show stored photo thumbnails, click any to open full size
+  // show stored photo thumbnails, click any to open full size — the whole set is
+  // stashed here so the viewer can swipe within it, scoped to just this review
   const photoDisplay=document.getElementById('view-photo-display');
   const urls=(rec.photoDataUrls&&rec.photoDataUrls.length)?rec.photoDataUrls:(rec.photoDataUrl?[rec.photoDataUrl]:[]);
+  currentViewPhotoUrls=urls;
   if(urls.length){
     photoDisplay.style.display='flex';
-    photoDisplay.innerHTML=urls.map(u=>`<img src="${u}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:0.5px solid var(--border-2);cursor:pointer;flex-shrink:0" onclick="openPhotoViewer('${u}')">`).join('');
+    photoDisplay.innerHTML=urls.map((u,i)=>`<img src="${u}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:0.5px solid var(--border-2);cursor:pointer;flex-shrink:0" onclick="openPhotoViewer(currentViewPhotoUrls,${i})">`).join('');
   } else {
     photoDisplay.style.display='none';
   }
@@ -5031,34 +5122,14 @@ async function shareViewedReview(btn){
       btnFeedback(btn,'finish the review first','var(--text-5)','var(--text)',2200);
       return;
     }
-    const origHTML=btn.innerHTML;
     const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
-    let result;
-
-    if(viewPreGenId===rec.id){
-      // Fast path — background pre-generation already finished (the normal case,
-      // since it starts the moment this review was opened). No awaits between here
-      // and navigator.share() below, so the tap's user-activation window is intact.
-      result=viewPreGenResult;
-    } else {
-      // Pre-gen hasn't finished yet (e.g. share was tapped within moments of opening
-      // the review) — fall back to generating now. This risks the same activation-
-      // window issue the pre-gen exists to avoid, but it's now a narrow edge case
-      // rather than the default every time.
-      if(rec.location && !rec.location.address){
-        btn.innerHTML='finding address\u2026';
-        const addr=await reverseGeocode(rec.location.lat,rec.location.lng);
-        if(addr){
-          rec.location.address=addr;
-          curLocation.address=addr;
-          saveSavedReviews(savedReviews);
-        }
-        btn.innerHTML=origHTML;
-      }
-      btn.innerHTML='preparing image\u2026';
-      result=await generateReviewFileSafe(cat,scoreText,attachedPhotos[0]||null,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
-      btn.innerHTML=origHTML;
-    }
+    // Never await geocoding or image generation here — navigator.share() must fire
+    // within moments of the actual tap or the browser revokes permission (this was
+    // still happening even with pre-generation, because that background work can
+    // take up to ~16s worst case and people often tap share well before that).
+    // Use whatever's already finished; if nothing is ready yet, share text-only
+    // rather than risk losing the share entirely by waiting for a nicer version.
+    const result=(viewPreGenId===rec.id)?viewPreGenResult:null;
 
     const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
     const title=`Review Radar \u00b7 ${cat.label}${rec.item?' \u00b7 '+rec.item:''}`;
