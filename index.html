@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.09</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.10</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3452,6 +3452,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.10',notes:[
+  'fixed \"share unavailable\" reappearing after the last update \u2014 the retry-with-fewer-photos approach called navigator.share() multiple times per tap, but that call consumes the browser\'s one-shot sharing permission the instant it\'s invoked, success or failure. the first attempt was silently dooming every retry after it. now the photo count is decided in advance (a check that doesn\'t consume that permission) and share is invoked exactly once'
+]},
 {v:'3.09',notes:[
   'undid the last update\'s decision to drop every attached photo from sharing by default \u2014 that traded away something people actually want to work around a suspected (never confirmed) reliability issue',
   'sharing now always tries to include every attached photo first, and only reduces the count if this specific device genuinely can\'t handle that many \u2014 so most people should now see all their photos shared, not none'
@@ -5571,40 +5574,45 @@ function btnFeedback(btn,html,bg,col,ms){
 }
 
 // ── SHARE ──────────────────────────────────────────────────────────────
-// Tries to share with every photo included first — that's what people actually want
-// — and only falls back to fewer files if THIS device genuinely can't handle that
-// many, rather than assuming a limit exists and dropping photos unconditionally.
+// navigator.share() consumes the browser's transient user activation the instant
+// it's called — whether it succeeds OR throws (this is spec-defined behavior, not
+// a guess: see the Web Share API spec and its web-platform-tests). That means a
+// retry loop that calls share() multiple times per tap is fundamentally broken:
+// the first attempt burns the activation, so every subsequent "safer" retry in the
+// same gesture fails with NotAllowedError regardless of file count — which is
+// exactly what turned this into a reliable failure instead of a rare one.
+//
+// The fix: decide the file count ENTIRELY using navigator.canShare() checks first
+// (canShare does not require or consume activation — that's specifically what it's
+// for), then call the real share() exactly once with whatever was chosen.
 // Returns {ok, photosIncluded, aborted} so the caller can give accurate feedback.
 async function shareWithPhotoFallback(baseFiles, photoFiles, shareDataBase){
   const steps=[...new Set([photoFiles.length, Math.ceil(photoFiles.length/2), Math.min(2,photoFiles.length), 0])]
     .filter(n=>n>=0 && n<=photoFiles.length)
-    .sort((a,b)=>b-a); // largest first — always try to include everything before giving anything up
-  let lastErr=null, triedAnyShare=false;
+    .sort((a,b)=>b-a); // largest first — pick the most photos canShare will accept
+
+  let chosenFiles=null, chosenN=0;
   for(const n of steps){
     const files=[...baseFiles, ...photoFiles.slice(0,n)];
-    const canShareFiles=files.length && navigator.canShare && navigator.canShare({files});
-    if(!canShareFiles) continue; // this exact combination isn't shareable at all here — try fewer
-    triedAnyShare=true;
-    try{
-      await navigator.share({...shareDataBase, files});
-      return {ok:true, photosIncluded:n};
-    }catch(err){
-      if(err.name==='AbortError') return {ok:false, aborted:true};
-      lastErr=err; // this file count didn't work on this device — try fewer before giving up
+    if(files.length && navigator.canShare && navigator.canShare({files})){
+      chosenFiles=files; chosenN=n; break;
     }
   }
-  // Files weren't shareable at any count on this browser (not a photo-count problem
-  // at all) — fall back to a plain text share rather than giving up entirely, matching
-  // what this always did before any of the photo-count logic above ever ran.
+
   try{
+    if(chosenFiles){
+      await navigator.share({...shareDataBase, files:chosenFiles});
+      return {ok:true, photosIncluded:chosenN};
+    }
+    // Files weren't shareable at any count on this browser at all — text-only,
+    // same fallback this always had before any photo-count logic existed.
     await navigator.share({title:shareDataBase.title, text:shareDataBase.text});
     return {ok:true, photosIncluded:0, textOnly:true};
   }catch(err){
     if(err.name==='AbortError') return {ok:false, aborted:true};
-    lastErr=err;
+    console.error('Review Radar: share failed —',err);
+    return {ok:false, aborted:false};
   }
-  if(lastErr) console.error('Review Radar: share failed at every attempt, including text-only —',lastErr);
-  return {ok:false, aborted:false};
 }
 
 async function shareReview(btn){
