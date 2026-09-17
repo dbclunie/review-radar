@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.06</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.07</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3452,6 +3452,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.07',notes:[
+  'fixed Blip\'s text overlap for real this time \u2014 the last fix only swapped which text was duplicated, not the actual cause: two separate elements were both positioned to occupy the same space. now there\'s only one'
+]},
 {v:'3.06',notes:[
   'fixed Blip showing the picked item\'s name twice, overlapping itself \u2014 two different functions were both writing the same text into overlapping areas',
   'Blip\'s outcome now also supports notes \u2014 tap the radar or the new note icon, same as a normal saved review'
@@ -3923,8 +3926,7 @@ function blipFinishLock(target){
   const ratingText = target.mode==='profile'
     ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
     : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
-  document.getElementById('blip-result').innerHTML=
-    `<div style="color:var(--text-4);font-size:0.72em">last picked ${target.days}d ago</div>`;
+  document.getElementById('blip-result').innerHTML=''; // all outcome text lives in blip-outcome-info now — see why below
   document.getElementById('blip-go').textContent=`blip again (${blipPool.length} left)`;
   blipMorphToOutcome(target, originPos);
 }
@@ -3949,7 +3951,7 @@ function blipMorphToOutcome(target, originPos){
     : '';
   document.getElementById('blip-outcome-info').innerHTML=
     `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}</div>
-     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText}</div>
+     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>
      ${noteIcon}`;
 
   radarEl.classList.add('blip-fadeout');
