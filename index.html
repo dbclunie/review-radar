@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.11</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.12</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3452,6 +3452,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.12',notes:[
+  'fixed shared images from a saved review showing no scores and a blank radar \u2014 the image generator secretly read scores from shared app state rather than a parameter, and the background pre-generation added for reliable sharing never set it, so it was drawing whatever scores happened to be left over from something else entirely'
+]},
 {v:'3.11',notes:[
   'found a second, separate share bug: creating a brand-new review still awaited address lookup and image generation before sharing \u2014 the same activation-window problem fixed elsewhere weeks ago, but never applied to this specific screen',
   'confirmed Chromium enforces a hard cap of 10 files and 50MB total on shared files \u2014 photo counts are now chosen against that real limit directly (using actual file sizes) rather than hoping a compatibility check would catch it'
@@ -5095,7 +5098,7 @@ async function preGenerateViewShare(rec){
   const photoFile=urls.length?dataUrlToFile(urls[0],'photo0.jpg'):null;
   const scoreText=rec.mode==='review'?`${rec.total}/${rec.max} \u00b7 ${rec.grade}`:`intensity ${rec.intensity} \u00b7 harmony ${rec.harmony}`;
 
-  const result=await generateReviewFileSafe(cat,scoreText,photoFile,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
+  const result=await generateReviewFileSafe(cat,scoreText,photoFile,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null,rec.scores,rec.item);
 
   // Only commit if still relevant — the user may have navigated to a different
   // review while this was generating, in which case this result is stale, discard it.
@@ -5307,7 +5310,17 @@ function starPath(ctx,cx,cy,r){
   ctx.closePath();
 }
 
-async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,starsVal,mapImageDataUrl,noteText){
+async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,starsVal,mapImageDataUrl,noteText,scoresOverride,itemOverride){
+  // scores/curItem used to be read directly from global state below, with no
+  // parameter for them at all — fine for every call site that runs while those
+  // globals are already correctly set (active dialing, or inside withViewRecord),
+  // but preGenerateViewShare() deliberately runs WITHOUT touching global state
+  // (to avoid a race if the user navigates to a different review mid-generation),
+  // so it was drawing whatever scores/item happened to be left over from
+  // something else entirely — the actual cause of a blank/wrong composite image.
+  // These two params are optional specifically so every other call site keeps
+  // working exactly as before, unchanged.
+  const effScores=scoresOverride||scores, effItem=itemOverride!=null?itemOverride:curItem;
   const W=600,PAD=28,FONT='Special Elite',BG=themeColor('--bg','#141412'),AMBER=themeColor('--accent','#F2A623');
   const SEC=themeColor('--text-3','#8B8880'),MUT=themeColor('--text-5','#57544C'),GRN=themeColor('--good','#97C459'),RED=themeColor('--bad','#E24B4A'),TXT=themeColor('--text','#E8E6DE');
   // Photo and map are never baked into the composite — they're kept as fully
@@ -5329,12 +5342,12 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
   let y=PAD;
   ctx.font=`bold 22px '${FONT}',monospace`; ctx.fillStyle=TXT; ctx.textAlign='left';
   ctx.fillText(cat.label.toUpperCase(),PAD,y+22);
-  const itemLabel=(curItem||'').toUpperCase();
+  const itemLabel=(effItem||'').toUpperCase();
   if(itemLabel){ ctx.textAlign='right'; ctx.fillText(itemLabel,W-PAD,y+22); }
   y+=34; divLine(ctx,PAD,y,W-PAD); y+=14;
   const TRACK_X=PAD+96, TRACK_W=W-PAD*2-96-28;
   cat.axes.forEach(a=>{
-    const v=scores[a]||0;
+    const v=effScores[a]||0;
     ctx.font=`13px '${FONT}',monospace`; ctx.fillStyle=SEC; ctx.textAlign='left'; ctx.fillText(a,PAD,y+15);
     ctx.fillStyle=themeColor('--surface-2','#26241F'); roundRect(ctx,TRACK_X,y+4,TRACK_W,12,4); ctx.fill();
     if(v>0){ ctx.fillStyle=AMBER; roundRect(ctx,TRACK_X,y+4,TRACK_W*(v/SCALE),12,4); ctx.fill(); }
@@ -5342,11 +5355,11 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
     y+=BAR_H+4;
   });
   y+=8; divLine(ctx,PAD,y,W-PAD); y+=14;
-  drawRadarOnCanvas(ctx,cat.axes,scores,PAD,y,RADAR_W,RADAR_H);
+  drawRadarOnCanvas(ctx,cat.axes,effScores,PAD,y,RADAR_W,RADAR_H);
   y+=RADAR_H+14; divLine(ctx,PAD,y,W-PAD); y+=18;
   const statCx=W/2;
   if(cat.mode==='review'){
-    const total=cat.total!=null?cat.total:cat.axes.reduce((s,a)=>s+(scores[a]||0),0);
+    const total=cat.total!=null?cat.total:cat.axes.reduce((s,a)=>s+(effScores[a]||0),0);
     const max=cat.max||cat.axes.length*SCALE, gr=grade(total,max);
     ctx.font=`bold 32px '${FONT}',monospace`; ctx.fillStyle=AMBER; ctx.textAlign='center';
     ctx.fillText(`${total}/${max}`,statCx-50,y+32);
@@ -5354,7 +5367,7 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
     ctx.font=`bold 26px '${FONT}',monospace`; ctx.fillStyle=gr.col; ctx.textAlign='center'; ctx.fillText(gr.g,gx+22,y+32);
     y+=52;
   } else {
-    const vals=cat.axes.map(a=>scores[a]||0);
+    const vals=cat.axes.map(a=>effScores[a]||0);
     const intensity=(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
     const harmony=SCALE-(Math.max(...vals)-Math.min(...vals));
     ctx.font=`bold 32px '${FONT}',monospace`;
