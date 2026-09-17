@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.05</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.06</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -657,7 +657,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:0;position:relative" id="blip-scope-wrap">
     <svg id="blip-radar" viewBox="0 0 300 300" style="width:100%;max-width:300px;transition:opacity .55s ease,transform .55s cubic-bezier(.4,0,.2,1)"></svg>
     <div id="blip-outcome" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transform:scale(0.05);transform-origin:150px 150px;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1)">
-      <svg viewBox="0 0 300 300" style="width:100%;max-width:260px" id="blip-outcome-radar"></svg>
+      <svg viewBox="0 0 300 300" style="width:100%;max-width:260px;cursor:pointer" id="blip-outcome-radar" onclick="openRadarModal(blipOutcomeRecordId)"></svg>
       <div id="blip-outcome-info" style="text-align:center;margin-top:6px"></div>
     </div>
     <div id="blip-result" style="text-align:center;min-height:40px;margin-top:6px"></div>
@@ -1767,8 +1767,8 @@ let scores = {};
 let dialIdx = 0;
 const SCALE = 5;
 
-function openRadarModal(){
-  const rec=savedReviews.find(r=>r.id===viewingReviewId);
+function openRadarModal(recordId){
+  const rec=savedReviews.find(r=>r.id===(recordId||viewingReviewId));
   if(!rec) return;
   const svg=rec.expectedScores?compareRadarSVG(rec.axes,rec.expectedScores,rec.scores):radarSVG(rec.axes,rec.scores);
   document.getElementById('radar-modal-content').innerHTML=svg;
@@ -3452,6 +3452,10 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.06',notes:[
+  'fixed Blip showing the picked item\'s name twice, overlapping itself \u2014 two different functions were both writing the same text into overlapping areas',
+  'Blip\'s outcome now also supports notes \u2014 tap the radar or the new note icon, same as a normal saved review'
+]},
 {v:'3.05',notes:[
   'fixed \"share unavailable\" for real this time \u2014 the previous fix still awaited slow work before sharing in the common case; now it never waits, sharing with whatever is ready rather than risking failure',
   'notes moved behind a dedicated note icon next to the score (only shown when a review has one) and behind tapping the radar itself \u2014 both open the same view',
@@ -3920,9 +3924,7 @@ function blipFinishLock(target){
     ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
     : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
   document.getElementById('blip-result').innerHTML=
-    `<div style="color:var(--accent);font-size:1.15em;font-weight:bold">${target.item}</div>
-     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">
-       ${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>`;
+    `<div style="color:var(--text-4);font-size:0.72em">last picked ${target.days}d ago</div>`;
   document.getElementById('blip-go').textContent=`blip again (${blipPool.length} left)`;
   blipMorphToOutcome(target, originPos);
 }
@@ -3941,9 +3943,14 @@ function blipMorphToOutcome(target, originPos){
   const ratingText = target.mode==='profile'
     ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
     : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
+  const fullRec=savedReviews.find(r=>r.id===target.recordId);
+  const noteIcon=fullRec&&fullRec.note
+    ? `<div tabindex="0" style="margin-top:4px;cursor:pointer;color:var(--accent);font-size:0.72em" onclick="openRadarModal(blipOutcomeRecordId)">\ud83d\udcdd note</div>`
+    : '';
   document.getElementById('blip-outcome-info').innerHTML=
     `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}</div>
-     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText}</div>`;
+     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText}</div>
+     ${noteIcon}`;
 
   radarEl.classList.add('blip-fadeout');
   radarEl.style.opacity='0'; radarEl.style.transform='scale(0.08)';
