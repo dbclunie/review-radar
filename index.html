@@ -397,10 +397,17 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
 /* axis bar row */
 .bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.bar-label{width:46px;color:var(--text-2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-label{width:82px;flex-shrink:0;color:var(--text-2);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar-track{flex:1;height:5px;background:var(--surface-2);border-radius:3px}
 .bar-fill{display:block;height:5px;background:var(--accent);border-radius:3px;transition:width .15s}
-.bar-val{width:12px;text-align:right;font-size:12px}
+.bar-val{width:14px;flex-shrink:0;text-align:right;font-size:12px}
+.bar-ticks{display:flex;align-items:center;gap:6px;margin:2px 0 8px}
+.bar-ticks-spacer{width:82px;flex-shrink:0}
+.bar-ticks-valspacer{width:14px;flex-shrink:0}
+.bar-ticks-scale{flex:1;display:flex;flex-direction:column;gap:1px}
+.bar-ticks-marks{display:flex;justify-content:space-between}
+.bar-ticks-marks span{width:1px;height:4px;background:var(--border-2)}
+.bar-ticks-nums{display:flex;justify-content:space-between;font-size:9px;color:var(--text-4)}
 
 /* axis dial */
 .dial-axis{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -508,7 +515,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.02</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.03</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -867,7 +874,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
       share
     </button>
-    <button class="send-btn" style="flex:1;background:var(--surface-2);color:var(--text);display:flex;align-items:center;justify-content:center;margin-top:0;padding:8px" onclick="renderCatSelect();showScreen('s-cat')">back to home</button>
+    <button class="send-btn" style="flex:1;background:var(--surface-2);color:var(--text);display:flex;align-items:center;justify-content:center;margin-top:0;padding:8px" onclick="clearTimeout(notePersistTimer);persistCurrentNoteToRecord();renderCatSelect();showScreen('s-cat')">back to home</button>
   </div>
 </div>
 
@@ -902,6 +909,14 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 </div>
 
 <!-- SECRET STREAK CALENDAR PAGE -->
+<!-- PHOTO VIEWER — window.open() with a data: URL is blocked by mobile Chrome's
+     security policy (lands on a blank about:blank tab), so full-size viewing has
+     to happen in-app instead of a new tab. -->
+<div id="photo-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:600;align-items:center;justify-content:center;padding:20px" onclick="closePhotoViewer()">
+  <img id="photo-viewer-img" style="max-width:100%;max-height:100%;border-radius:6px;object-fit:contain">
+  <span tabindex="0" style="position:absolute;top:16px;right:20px;color:#fff;font-size:1.6em;cursor:pointer" onclick="closePhotoViewer()">&times;</span>
+</div>
+
 <!-- THEME PAGE -->
 <div id="theme-page" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:180;flex-direction:column;padding:20px;box-sizing:border-box;font-family:'Special Elite',monospace">
   <div style="text-align:center;font-size:0.95em;color:var(--accent-light);font-weight:bold;letter-spacing:1px;margin-bottom:14px;flex-shrink:0">theme</div>
@@ -1738,6 +1753,30 @@ let scores = {};
 let dialIdx = 0;
 const SCALE = 5;
 
+function openPhotoViewer(url){
+  document.getElementById('photo-viewer-img').src=url;
+  document.getElementById('photo-viewer').style.display='flex';
+}
+function closePhotoViewer(){
+  document.getElementById('photo-viewer').style.display='none';
+  document.getElementById('photo-viewer-img').src='';
+}
+
+// Shared 0-through-SCALE tick/number scale shown once below a group of axis bars —
+// gives the bars an actual reference axis instead of just a bare number at the end.
+function buildBarTickRow(){
+  const nums=Array.from({length:SCALE+1},(_,i)=>`<span>${i}</span>`).join('');
+  const marks=Array.from({length:SCALE+1},()=>'<span></span>').join('');
+  return `<div class="bar-ticks">
+    <span class="bar-ticks-spacer"></span>
+    <span class="bar-ticks-scale">
+      <span class="bar-ticks-marks">${marks}</span>
+      <span class="bar-ticks-nums">${nums}</span>
+    </span>
+    <span class="bar-ticks-valspacer"></span>
+  </div>`;
+}
+
 // ── RADAR SVG ─────────────────────────────────────────────────────────────
 function truncateLabel(str,maxLen=11){
   return str.length>maxLen ? str.slice(0,maxLen-1)+'\u2026' : str;
@@ -2034,7 +2073,7 @@ function renderItemPhotoBadge(){
     const reader=new FileReader();
     reader.onload=()=>{ img.src=reader.result; };
     reader.readAsDataURL(file);
-    img.onclick=()=>window.open(img.src,'_blank');
+    img.onclick=()=>openPhotoViewer(img.src);
     preview.appendChild(img);
   });
 }
@@ -2212,6 +2251,22 @@ function handleConfNoteInput(el){
   }
   curNote=el.textContent;
   document.getElementById('conf-note-count').textContent=`${curNote.length}/255`;
+
+  // The record was already auto-saved the moment this screen was reached — BEFORE
+  // any of this typing happened. Without this, the note the user types here never
+  // actually reaches storage: curNote updates, but nothing re-persists it.
+  clearTimeout(notePersistTimer);
+  notePersistTimer=setTimeout(persistCurrentNoteToRecord,500);
+}
+
+let notePersistTimer=null;
+function persistCurrentNoteToRecord(){
+  const id=completingPendingId||editingReviewId||currentReviewId;
+  if(!id) return;
+  const rec=savedReviews.find(r=>r.id===id);
+  if(!rec) return;
+  rec.note=(curCat&&curCat.useNote&&curNote)?curNote:null;
+  saveSavedReviews(savedReviews);
 }
 
 function renderConfirm(){
@@ -2241,6 +2296,7 @@ function renderConfirm(){
       <span class="bar-val">${v}</span>
     </div>`;
   });
+  bars.innerHTML+=buildBarTickRow();
 
   // radar chart (actual entered scores)
   const savedDialIdx=dialIdx;
@@ -3322,6 +3378,12 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.03',notes:[
+  'fixed \"share unavailable\" \u2014 the share image and address now pre-generate in the background the moment a review is opened, so tapping share fires immediately instead of losing the browser\'s permission window during slow processing',
+  'fixed photo thumbnails opening a blank tab \u2014 tapping a photo now opens it in a proper in-app viewer instead of a browser action mobile Chrome blocks for security reasons',
+  'fixed notes typed on the confirm screen never actually saving \u2014 they were being entered after the review had already auto-saved, with nothing to persist the update afterward',
+  'category names on the score bars no longer truncate with \"...\" \u2014 widened the label column and added a 0\u20135 tick/number scale below the bars for reference'
+]},
 {v:'3.02',notes:['copyright notice added to the app and source','PWA support — installable to home screen, works offline for the app itself (map/location features still need a connection)']},
 {v:'3.01',notes:['Blip \u2014 a new tool on the main page for when you can\u2019t decide. Picks randomly from your own reviews, filterable by category and rating, with a radar-sweep animation','favors things you haven\u2019t picked recently (adjustable)','each pick is excluded from repeating for the rest of the session, whether from "blip again" or picking down to the last option','pulls real data from your saved reviews \u2014 adapts to grade-based or character/intensity-based categories automatically']},
 {v:'3.00',notes:['21 new achievements covering expectations, themes, photos, CSV export, reminders and more — 194 total','expectation achievements are computed from your stored reviews, so past pairs count retroactively']},
@@ -4841,6 +4903,7 @@ function viewSavedReview(id){
       <span class="bar-val">${v}</span>
     </div>`;
   });
+  bars.innerHTML+=buildBarTickRow();
 
   const savedDialIdx=dialIdx;
   dialIdx=-1;
@@ -4884,15 +4947,56 @@ function viewSavedReview(id){
   const urls=(rec.photoDataUrls&&rec.photoDataUrls.length)?rec.photoDataUrls:(rec.photoDataUrl?[rec.photoDataUrl]:[]);
   if(urls.length){
     photoDisplay.style.display='flex';
-    photoDisplay.innerHTML=urls.map(u=>`<img src="${u}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:0.5px solid var(--border-2);cursor:pointer;flex-shrink:0" onclick="window.open('${u}','_blank')">`).join('');
+    photoDisplay.innerHTML=urls.map(u=>`<img src="${u}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:0.5px solid var(--border-2);cursor:pointer;flex-shrink:0" onclick="openPhotoViewer('${u}')">`).join('');
   } else {
     photoDisplay.style.display='none';
   }
 
   showScreen('s-view');
+  preGenerateViewShare(rec); // fire-and-forget — ready well before the user taps share
 }
 
 // ── VIEW SCREEN SHARE (uses stored photo/location from the record) ─────
+// ── VIEW-SCREEN SHARE PRE-GENERATION ────────────────────────────────────
+// navigator.share() must fire within a short window of the actual tap ("user
+// activation") or the browser throws NotAllowedError. shareViewedReview() used to
+// await reverse-geocoding AND image generation before calling it — easily enough
+// delay to burn through that window, especially with photos + an unresolved address,
+// which is exactly what showed up as "share unavailable". Fix: do that slow work in
+// the background the moment the review is opened, so share can fire near-instantly.
+let viewPreGenId=null, viewPreGenResult=null;
+
+async function preGenerateViewShare(rec){
+  const myId=rec.id;
+  viewPreGenId=null; viewPreGenResult=null; // invalidate whatever was pre-generated for a different review
+
+  // Built from rec directly, not the shared curCat/curNote/etc globals — those get
+  // temporarily swapped by withViewRecord() and restored once its callback resolves,
+  // which isn't safe to run concurrently with if the user opens a different review
+  // before this background job finishes.
+  if(rec.location && !rec.location.address){
+    const addr=await reverseGeocode(rec.location.lat,rec.location.lng);
+    if(addr && savedReviews.find(r=>r.id===myId)===rec){
+      rec.location.address=addr;
+      saveSavedReviews(savedReviews);
+    }
+  }
+
+  const cat={id:rec.catId,label:rec.catLabel,mode:rec.mode,axes:rec.axes,stars:rec.stars,useLocation:!!rec.location,useNote:!!rec.note};
+  const urls=(rec.photoDataUrls&&rec.photoDataUrls.length)?rec.photoDataUrls:(rec.photoDataUrl?[rec.photoDataUrl]:[]);
+  const photoFile=urls.length?dataUrlToFile(urls[0],'photo0.jpg'):null;
+  const scoreText=rec.mode==='review'?`${rec.total}/${rec.max} \u00b7 ${rec.grade}`:`intensity ${rec.intensity} \u00b7 harmony ${rec.harmony}`;
+
+  const result=await generateReviewFileSafe(cat,scoreText,photoFile,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
+
+  // Only commit if still relevant — the user may have navigated to a different
+  // review while this was generating, in which case this result is stale, discard it.
+  if(viewingReviewId===myId){
+    viewPreGenId=myId;
+    viewPreGenResult=result;
+  }
+}
+
 function dataUrlToFile(dataUrl,filename){
   if(!dataUrl) return null;
   const [meta,b64]=dataUrl.split(',');
@@ -4925,27 +5029,37 @@ async function shareViewedReview(btn){
       return;
     }
     const origHTML=btn.innerHTML;
-    // Some older saved reviews may have been created before their address resolved.
-    // Fix it now, and persist it so future shares of this same review don't repeat the wait.
-    if(rec.location && !rec.location.address){
-      btn.innerHTML='finding address\u2026';
-      const addr=await reverseGeocode(rec.location.lat,rec.location.lng);
-      if(addr){
-        rec.location.address=addr;
-        curLocation.address=addr;
-        saveSavedReviews(savedReviews);
+    const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
+    let result;
+
+    if(viewPreGenId===rec.id){
+      // Fast path — background pre-generation already finished (the normal case,
+      // since it starts the moment this review was opened). No awaits between here
+      // and navigator.share() below, so the tap's user-activation window is intact.
+      result=viewPreGenResult;
+    } else {
+      // Pre-gen hasn't finished yet (e.g. share was tapped within moments of opening
+      // the review) — fall back to generating now. This risks the same activation-
+      // window issue the pre-gen exists to avoid, but it's now a narrow edge case
+      // rather than the default every time.
+      if(rec.location && !rec.location.address){
+        btn.innerHTML='finding address\u2026';
+        const addr=await reverseGeocode(rec.location.lat,rec.location.lng);
+        if(addr){
+          rec.location.address=addr;
+          curLocation.address=addr;
+          saveSavedReviews(savedReviews);
+        }
+        btn.innerHTML=origHTML;
       }
+      btn.innerHTML='preparing image\u2026';
+      result=await generateReviewFileSafe(cat,scoreText,attachedPhotos[0]||null,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
       btn.innerHTML=origHTML;
     }
 
-    const {cat,payload,msg,scoreText,summary,ts}=buildReviewPayload();
     const stamp=ts.slice(0,10).replace(/-/g,'.')+'_'+ts.slice(11,16).replace(':','');
     const title=`Review Radar \u00b7 ${cat.label}${rec.item?' \u00b7 '+rec.item:''}`;
     const text=buildHumanBody(cat,payload,scoreText,rec);
-
-    btn.innerHTML='preparing image\u2026';
-    const result=await generateReviewFileSafe(cat,scoreText,attachedPhotos[0]||null,rec.location||null,null,rec.stars&&rec.curStars?rec.curStars:null,null,rec.note||null);
-    btn.innerHTML=origHTML;
 
     // The payload .txt has been reliable as a file attachment across every test — keep it
     // that way rather than trusting the 'text' field, which some share targets (Gmail
@@ -4961,7 +5075,7 @@ async function shareViewedReview(btn){
     if(navigator.share){
       try{
         const canShareFiles=files.length&&navigator.canShare&&navigator.canShare({files});
-        console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles,'| file count:',files.length);
+        console.log('Review Radar share debug — image generated:',!!result,'| canShare(files):',canShareFiles,'| file count:',files.length,'| used pre-gen:',viewPreGenId===rec.id);
         const shareData=canShareFiles?{title,text,files}:{title,text};
         await navigator.share(shareData);
         bumpCounter('rr_share_count'); evaluateAchievements();
@@ -5378,6 +5492,7 @@ function btnFeedback(btn,html,bg,col,ms){
 
 // ── SHARE ──────────────────────────────────────────────────────────────
 async function shareReview(btn){
+  clearTimeout(notePersistTimer); persistCurrentNoteToRecord(); // flush — don't lose a note typed just before tapping share
   const origHTML=btn.innerHTML;
   // If a location is set but its address hasn't resolved yet (reverse geocoding runs
   // in the background and can lose the race if you share quickly), wait for it now —
