@@ -515,7 +515,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.03</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.04</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3378,6 +3378,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.04',notes:[
+  'fixed the service worker serving a stale, cached copy of the app forever \u2014 it was caching the app itself the same cache-first way as truly static files, so updates never reached anyone who\'d already opened the app once. the app document now always checks the network first and only falls back to the cached copy when genuinely offline'
+]},
 {v:'3.03',notes:[
   'fixed \"share unavailable\" \u2014 the share image and address now pre-generate in the background the moment a review is opened, so tapping share fires immediately instead of losing the browser\'s permission window during slow processing',
   'fixed photo thumbnails opening a blank tab \u2014 tapping a photo now opens it in a proper in-app viewer instead of a browser action mobile Chrome blocks for security reasons',
