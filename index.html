@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.07</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.08</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3452,6 +3452,11 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.08',notes:[
+  'removed the separate note icon \u2014 tapping the radar already shows notes, so it was redundant',
+  'fixed a real bug where a failed share on a brand-new review silently fell through to downloading files instead of reporting the failure \u2014 you would\'ve seen \"files downloaded\" with zero indication the actual share attempt had failed',
+  'stopped attaching every individual photo as a separate share file \u2014 sharing several files at once has proven unreliable on Android throughout this app\'s testing, and was very likely the real cause of \"share unavailable\" on reviews with multiple photos specifically. the composite image already includes the first photo'
+]},
 {v:'3.07',notes:[
   'fixed Blip\'s text overlap for real this time \u2014 the last fix only swapped which text was duplicated, not the actual cause: two separate elements were both positioned to occupy the same space. now there\'s only one'
 ]},
@@ -3945,14 +3950,9 @@ function blipMorphToOutcome(target, originPos){
   const ratingText = target.mode==='profile'
     ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
     : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
-  const fullRec=savedReviews.find(r=>r.id===target.recordId);
-  const noteIcon=fullRec&&fullRec.note
-    ? `<div tabindex="0" style="margin-top:4px;cursor:pointer;color:var(--accent);font-size:0.72em" onclick="openRadarModal(blipOutcomeRecordId)">\ud83d\udcdd note</div>`
-    : '';
   document.getElementById('blip-outcome-info').innerHTML=
     `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}</div>
-     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>
-     ${noteIcon}`;
+     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>`;
 
   radarEl.classList.add('blip-fadeout');
   radarEl.style.opacity='0'; radarEl.style.transform='scale(0.08)';
@@ -5021,10 +5021,6 @@ function viewSavedReview(id){
   dialIdx=savedDialIdx;
 
   const starMid=rec.stars&&rec.curStars?`<div style="margin:0 10px">${starSVG(5,rec.curStars,20,null)}</div>`:'';
-  const noteIcon=rec.note?`<div tabindex="0" style="text-align:center;cursor:pointer" onclick="openRadarModal()">
-      <div style="font-size:1.3em;line-height:1">\ud83d\udcdd</div>
-      <div class="stat-label">note</div>
-    </div>`:'';
   const res=document.getElementById('view-result');
   if(rec.mode==='review'){
     const gr=grade(rec.total,rec.max);
@@ -5032,14 +5028,12 @@ function viewSavedReview(id){
       <div class="stat-block" style="flex:none;text-align:center"><div class="stat-label">total</div><div class="stat-val" style="color:${gr.col}">${rec.total}<span style="font-size:13px;color:var(--text-4)">/${rec.max}</span></div></div>
       ${starMid}
       <div class="grade-box" style="border:1.5px solid ${gr.col}"><div class="grade-letter" style="color:${gr.col}">${gr.g}</div><div class="grade-range">${gr.range}</div></div>
-      ${noteIcon}
     </div>`;
   } else {
     res.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;gap:10px">
       <div class="stat-block" style="flex:none;text-align:center"><div class="stat-label">intensity</div><div class="stat-val" style="color:var(--accent)">${rec.intensity}</div></div>
       ${starMid}
       <div class="stat-block" style="flex:none;text-align:center"><div class="stat-label">harmony</div><div class="stat-val" style="color:${rec.harmony<=2?'var(--bad)':'var(--good)'}">${rec.harmony}</div></div>
-      ${noteIcon}
     </div>`;
   }
 
@@ -5147,13 +5141,13 @@ async function shareViewedReview(btn){
     // The payload .txt has been reliable as a file attachment across every test — keep it
     // that way rather than trusting the 'text' field, which some share targets (Gmail
     // included, it appears) don't reliably populate the compose body from when files are
-    // also present. The image is included alongside it when generation succeeds.
+    // also present. Additional photos beyond the one baked into the composite are
+    // deliberately NOT attached separately — sharing several files at once has proven
+    // unreliable on Android, and is the most likely cause of "share unavailable" on
+    // reviews with multiple photos specifically.
     const files=[];
     if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
     files.push(new File([msg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
-    attachedPhotos.forEach((photo,i)=>{
-      files.push(new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'}));
-    });
 
     if(navigator.share){
       try{
@@ -5607,13 +5601,13 @@ async function shareReview(btn){
   // The payload .txt has been reliable as a file attachment across every test — keep it
   // that way rather than trusting the 'text' field, which some share targets (Gmail
   // included, it appears) don't reliably populate the compose body from when files are
-  // also present. The image is included alongside it when generation succeeds.
+  // also present. The composite image already has the first photo baked in, so
+  // additional photos are deliberately NOT attached as separate files — sharing many
+  // files at once has proven unreliable on Android throughout this app's testing, and
+  // was very likely the actual cause of "share unavailable" on reviews with several photos.
   const files=[];
   if(result) files.push(new File([result.blob],`review_radar_${cat.id}_${stamp}.${result.ext}`,{type:result.type}));
   files.push(new File([payloadMsg],`review_radar_${cat.id}_${stamp}_payload.txt`,{type:'text/plain'}));
-  attachedPhotos.forEach((photo,i)=>{
-    files.push(new File([photo],`review_radar_${cat.id}_${stamp}_photo${i+1}.${(photo.name.split('.').pop()||'jpg')}`,{type:photo.type||'image/jpeg'}));
-  });
 
   if(navigator.share){
     try{
@@ -5632,6 +5626,11 @@ async function shareReview(btn){
       return;
     }catch(err){
       if(err.name==='AbortError') return;
+      // This used to swallow the error and fall through to downloading files
+      // unconditionally — meaning a failed share always looked like "it just
+      // downloaded 2 files" with no indication anything had gone wrong at all.
+      btnFeedback(btn,'share unavailable','var(--text-5)','var(--text)',2000);
+      return;
     }
   }
   // Fallback: download
