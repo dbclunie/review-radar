@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.12</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.13</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -883,8 +883,11 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
 <!-- SCREEN 5b: view saved review (read-only) -->
 <div class="screen" id="s-view">
-  <div class="hdr" style="flex-shrink:0;margin-bottom:2px"><span id="hdr-view-cat"></span><span id="hdr-view-item"></span></div>
-  <div id="view-scroll" style="flex:1;overflow-y:auto;min-height:0">
+  <div class="hdr" style="flex-shrink:0;margin-bottom:2px;display:block;text-align:left">
+    <div id="hdr-view-cat" style="display:block;font-size:0.75em;letter-spacing:0.5px;color:var(--text-3);font-weight:normal;line-height:1.4"></div>
+    <div id="hdr-view-item" style="display:block;font-size:1.15em;font-weight:bold;line-height:1.3;word-break:break-word"></div>
+  </div>
+  <div id="view-scroll" style="flex:1;overflow-y:auto;min-height:0;padding-right:12px;margin-right:-12px">
     <div id="view-date" style="font-size:0.65em;color:var(--text-4);margin-bottom:3px"></div>
     <div id="view-bars" style="margin-bottom:1px"></div>
     <div class="divider" style="margin:3px 0"></div>
@@ -3452,6 +3455,12 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.13',notes:[
+  'long review names on the list screen now wrap instead of truncating with ...',
+  'fixed the view screen\'s category and item name running together with no space (e.g. \"RESTAURANTThe Butcher Shop\") \u2014 they now stack as a small category label above a proper title that wraps cleanly',
+  'added right-side clearance in the scrollable review view so the scrollbar no longer overlaps the score numbers or the radar chart',
+  'fixed the shared/emailed image\'s radar chart missing the score in parentheses next to each category \u2014 it matches the in-app view now'
+]},
 {v:'3.12',notes:[
   'fixed shared images from a saved review showing no scores and a blank radar \u2014 the image generator secretly read scores from shared app state rather than a parameter, and the background pre-generation added for reliable sharing never set it, so it was drawing whatever scores happened to be left over from something else entirely'
 ]},
@@ -4816,7 +4825,7 @@ function renderSavedReviewsList(){
     if(rec.pending) row.style.opacity='0.72';
 
     row.innerHTML=`<div style="flex:1;min-width:0">
-        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:bold">${rec.catLabel}${rec.item?' \u00b7 '+rec.item:''}</div>
+        <div style="font-weight:bold;line-height:1.3">${rec.catLabel}${rec.item?' \u00b7 '+rec.item:''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:2px;padding-left:8px">
           <span style="display:inline-flex;align-items:center;gap:3px">${scoreBadge}${starsHtml}</span>
           <span style="color:var(--text-4);white-space:nowrap;margin-left:auto;font-size:0.85em">${dateStr}</span>
@@ -5477,7 +5486,8 @@ function drawRadarOnCanvas(ctx,axes,sc,ox,oy,rW,rH){
   axes.forEach((a,i)=>{ const p=pt(i,(sc[a]||0)*rStep); ctx.beginPath(); ctx.arc(p[0],p[1],4,0,Math.PI*2); ctx.fillStyle=AMBER; ctx.fill(); });
   axes.forEach((a,i)=>{
     const p=pt(i,rMax+18), anch=p[0]<cx-6?'right':p[0]>cx+6?'left':'center';
-    const fs=a.length>8?11:13, label=a.length>11?a.slice(0,10)+'\u2026':a;
+    const scoreVal=sc[a]!=null?sc[a]:0;
+    const fs=a.length>8?11:13, label=(a.length>11?a.slice(0,10)+'\u2026':a)+` (${scoreVal})`;
     ctx.font=`${fs}px '${FONT}',monospace`; ctx.fillStyle=SEC; ctx.textAlign=anch; ctx.fillText(label,p[0],p[1]+4);
   });
   const tp=pt(0,rMax); ctx.font=`11px '${FONT}',monospace`; ctx.fillStyle=MUT; ctx.textAlign='left'; ctx.fillText(SCALE,tp[0]+4,tp[1]);
