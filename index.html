@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.13</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.14</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3455,6 +3455,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.14',notes:[
+  'fixed the shared/emailed image still smashing the category and item name together \u2014 this was a completely separate bug from the one fixed last version, in the canvas image generator rather than the app screen. category and item now stack on their own lines, with the title wrapping onto multiple lines and the image sized to fit however many it needs'
+]},
 {v:'3.13',notes:[
   'long review names on the list screen now wrap instead of truncating with ...',
   'fixed the view screen\'s category and item name running together with no space (e.g. \"RESTAURANTThe Butcher Shop\") \u2014 they now stack as a small category label above a proper title that wraps cleanly',
@@ -5342,18 +5345,36 @@ async function generateReviewFile(cat,scoreText,photoFile,location,quoteText,sta
   const PHOTO_H=0;
   const MAP_H=0;
   const QUOTE_H=quoteText?72:0, LOC_H=location?48:0, NOTE_H=noteText?160:0;
-  const totalH=PAD+34+16+bars_section+12+RADAR_H+16+STATS_H+QUOTE_H+NOTE_H+PHOTO_H+MAP_H+LOC_H+PAD;
+
+  // Category and item name used to be drawn on one line — category left-aligned,
+  // item right-aligned — with no collision handling, so a long item name simply
+  // crashed straight into the category text. They're now stacked: a small
+  // category label, then the item title wrapped onto as many lines as it needs.
+  // Canvas height has to be known before the real canvas exists, so a throwaway
+  // canvas measures the wrapped title's actual line count first.
+  const itemLabel=(effItem||'').toUpperCase();
+  const CAT_LABEL_H=20, TITLE_LINE_H=26;
+  const measureCanvas=document.createElement('canvas');
+  const measureCtx=measureCanvas.getContext('2d');
+  measureCtx.font=`bold 22px '${FONT}',monospace`;
+  const titleLines=itemLabel?Math.ceil(wrapTextLeftH(measureCtx,itemLabel,0,0,W-PAD*2,TITLE_LINE_H)/TITLE_LINE_H):0;
+  const HEADER_H=CAT_LABEL_H+(titleLines*TITLE_LINE_H)+10;
+
+  const totalH=PAD+HEADER_H+16+bars_section+12+RADAR_H+16+STATS_H+QUOTE_H+NOTE_H+PHOTO_H+MAP_H+LOC_H+PAD;
   const canvas=document.createElement('canvas');
   canvas.width=W; canvas.height=totalH;
   const ctx=canvas.getContext('2d');
   await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,500))]);
   ctx.fillStyle=BG; ctx.fillRect(0,0,W,totalH);
   let y=PAD;
-  ctx.font=`bold 22px '${FONT}',monospace`; ctx.fillStyle=TXT; ctx.textAlign='left';
-  ctx.fillText(cat.label.toUpperCase(),PAD,y+22);
-  const itemLabel=(effItem||'').toUpperCase();
-  if(itemLabel){ ctx.textAlign='right'; ctx.fillText(itemLabel,W-PAD,y+22); }
-  y+=34; divLine(ctx,PAD,y,W-PAD); y+=14;
+  ctx.font=`13px '${FONT}',monospace`; ctx.fillStyle=SEC; ctx.textAlign='left';
+  ctx.fillText(cat.label.toUpperCase(),PAD,y+13);
+  y+=CAT_LABEL_H;
+  if(itemLabel){
+    ctx.font=`bold 22px '${FONT}',monospace`; ctx.fillStyle=TXT; ctx.textAlign='left';
+    y+=wrapTextLeftH(ctx,itemLabel,PAD,y,W-PAD*2,TITLE_LINE_H);
+  }
+  y+=10; divLine(ctx,PAD,y,W-PAD); y+=14;
   const TRACK_X=PAD+96, TRACK_W=W-PAD*2-96-28;
   cat.axes.forEach(a=>{
     const v=effScores[a]||0;
@@ -5501,6 +5522,21 @@ function wrapTextH(ctx,text,x,y,maxW,lineH){
     else { line=test; }
   }
   if(line){ ctx.fillText(line,x+maxW/2,y+lineH*(lines+1)); lines++; }
+  return lines*lineH;
+}
+
+// Left-aligned counterpart to wrapTextH, used for the item title — the category
+// and item name used to be drawn on the same line (category left-aligned, item
+// right-aligned) with no collision handling at all, so a long item name simply
+// crashed into the category text. This wraps it onto as many lines as it needs.
+function wrapTextLeftH(ctx,text,x,y,maxW,lineH){
+  const words=text.split(' '); let line='',lines=0;
+  for(const word of words){
+    const test=line?line+' '+word:word;
+    if(ctx.measureText(test).width>maxW && line){ ctx.fillText(line,x,y+lineH*(lines+1)); line=word; lines++; }
+    else { line=test; }
+  }
+  if(line){ ctx.fillText(line,x,y+lineH*(lines+1)); lines++; }
   return lines*lineH;
 }
 
