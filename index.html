@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.14</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.15</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -1885,13 +1885,13 @@ function radarSVG(axes, scores){
   function pt(i,r){ const a=(i/n)*2*Math.PI + Math.PI/2; return[cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
   function poly(r){ return Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' '); }
   let svg=`<svg viewBox="0 0 240 180" style="width:100%">`;
-  // grid rings
+  // grid rings — matched to the same brightness as the criteria labels (var(--text-3)),
+  // rather than the previous dim, heavily-opacity-reduced border color
   for(let k=1;k<=SCALE;k++){
-    const op = k===SCALE?0.45:0.2;
-    svg+=`<polygon points="${poly(k*rStep)}" fill="none" stroke="var(--border-3)" stroke-width="${k===SCALE?0.8:0.5}" opacity="${op}"/>`;
+    svg+=`<polygon points="${poly(k*rStep)}" fill="none" stroke="var(--text-3)" stroke-width="${k===SCALE?0.8:0.5}"/>`;
   }
-  // spokes
-  for(let i=0;i<n;i++){const p=pt(i,rMax); svg+=`<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="var(--border)" stroke-width="0.5"/>`;}
+  // spokes — same brightness as the grid rings and labels
+  for(let i=0;i<n;i++){const p=pt(i,rMax); svg+=`<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="var(--text-3)" stroke-width="0.5"/>`;}
   // data polygon
   const dpts = axes.map((a,i)=>pt(i,(scores[a]||0)*rStep).join(',')).join(' ');
   svg+=`<polygon points="${dpts}" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>`;
@@ -3455,6 +3455,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.15',notes:[
+  'pentagon grid lines and spokes on every radar chart (viewing a review, the expectation-vs-actual comparison, and the shared image) now match the same brightness as the criteria labels, instead of being much dimmer \u2014 the score shape and selected value stay the brightest elements'
+]},
 {v:'3.14',notes:[
   'fixed the shared/emailed image still smashing the category and item name together \u2014 this was a completely separate bug from the one fixed last version, in the canvas image generator rather than the app screen. category and item now stack on their own lines, with the title wrapping onto multiple lines and the image sized to fit however many it needs'
 ]},
@@ -4937,10 +4940,9 @@ function compareRadarSVG(axes,scoresA,scoresB){
   function poly(r){ return Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' '); }
   let svg=`<svg viewBox="0 0 240 180" style="width:100%">`;
   for(let k=1;k<=SCALE;k++){
-    const op=k===SCALE?0.45:0.2;
-    svg+=`<polygon points="${poly(k*rStep)}" fill="none" stroke="var(--border-3)" stroke-width="${k===SCALE?0.8:0.5}" opacity="${op}"/>`;
+    svg+=`<polygon points="${poly(k*rStep)}" fill="none" stroke="var(--text-3)" stroke-width="${k===SCALE?0.8:0.5}"/>`;
   }
-  for(let i=0;i<n;i++){ const p=pt(i,rMax); svg+=`<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="var(--border)" stroke-width="0.5"/>`; }
+  for(let i=0;i<n;i++){ const p=pt(i,rMax); svg+=`<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="var(--text-3)" stroke-width="0.5"/>`; }
 
   const dptsA=axes.map((a,i)=>pt(i,(scoresA[a]||0)*rStep).join(',')).join(' ');
   svg+=`<polygon points="${dptsA}" fill="var(--accent)" fill-opacity="0.2" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>`;
@@ -5495,10 +5497,10 @@ function drawRadarOnCanvas(ctx,axes,sc,ox,oy,rW,rH){
     ctx.beginPath();
     for(let i=0;i<n;i++){ const p=pt(i,k*rStep); i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); }
     ctx.closePath();
-    ctx.strokeStyle=k===SCALE?'rgba(74,71,65,0.7)':'rgba(74,71,65,0.35)';
+    ctx.strokeStyle=SEC;
     ctx.lineWidth=k===SCALE?0.8:0.5; ctx.stroke();
   }
-  ctx.strokeStyle='rgba(46,44,40,0.8)'; ctx.lineWidth=0.5;
+  ctx.strokeStyle=SEC; ctx.lineWidth=0.5;
   for(let i=0;i<n;i++){ const p=pt(i,rMax); ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p[0],p[1]); ctx.stroke(); }
   ctx.beginPath();
   axes.forEach((a,i)=>{ const p=pt(i,(sc[a]||0)*rStep); i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); });
