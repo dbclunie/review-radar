@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.16</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.17</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3479,6 +3479,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.17',notes:[
+  'fixed \"narrow it down\" button doing nothing on the Blip screen \u2014 new variable declarations were placed after the code that used them, causing a silent crash that also prevented any other JS from running on that screen'
+]},
 {v:'3.16',notes:[
   'Blip now has three pool options: your reviews (existing behavior), your reviews nearby (your reviewed locations within a chosen radius), and nearby restaurants (live Overpass API search for restaurants/cafes/food within the radius, no review needed)',
   'radius selector: 2.5 / 5 / 10 / 20 miles \u2014 shown only when a location-based pool is selected',
@@ -3687,6 +3690,9 @@ let blipGeneration=0; // bumped whenever the user leaves — lets an in-flight f
 let blipHeat=[];
 const blipExcludedThisSession=new Set();
 let blipLastRatingMode=undefined;
+let blipUserLat=null, blipUserLon=null;
+let blipNearbyPlaces=[];
+let blipNearbyLoading=false;
 
 function getBlipCandidates(){
   // One entry per distinct item per category — the most recent review of that
@@ -3855,9 +3861,6 @@ function haversineM(lat1,lon1,lat2,lon2){
 function milesToMeters(mi){ return mi*1609.344; }
 function metersToMileStr(m){ const mi=m/1609.344; return mi<0.1?Math.round(m)+'m':mi.toFixed(1)+' mi'; }
 
-let blipUserLat=null, blipUserLon=null;
-let blipNearbyPlaces=[];  // cached Overpass results for the current query
-let blipNearbyLoading=false;
 
 async function blipGetUserLocation(){
   if(blipUserLat!==null) return true;
