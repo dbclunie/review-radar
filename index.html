@@ -519,7 +519,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.18</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.19</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3481,6 +3481,10 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.19',notes:[
+  'Blip: tapping the name or address of a nearby restaurant now hands off to Google Maps for navigation \u2014 uses coordinates for precision when available, falls back to a name+address search otherwise',
+  'Blip: saved reviews with a stored location also now show a \"navigate \u2197\" link in the outcome'
+]},
 {v:'3.18',notes:[
   'fixed \"narrow it down\" on Blip — the filter panel\'s default closed state (opacity:0, pointer-events:none) was set as inline styles, which always beat CSS class rules in specificity, so the .open class could never actually override them. moved defaults into CSS and verified the panel now opens correctly',
   'Blip now has three pool sources: your reviews (unchanged), your reviews nearby (filtered by distance), and nearby restaurants (live Overpass API search within chosen radius)',
@@ -4160,10 +4164,25 @@ function blipMorphToOutcome(target, originPos){
     rv.style.display='none';
     reviewOut.style.display='none';
     placeOut.style.display='block';
-    document.getElementById('blip-place-name').textContent=target.name;
+    // Build a maps URL — coords are more precise, but fall back to name+address
+    // search if somehow absent. The geo: URI opens Google Maps natively on Android;
+    // maps.apple.com opens Maps on iOS. We use geo: with a label and a fallback
+    // href pointing at Google Maps so it works on both.
+    const hasCoords = target.lat!=null && target.lon!=null;
+    const searchQ = encodeURIComponent([target.name, target.address].filter(Boolean).join(', '));
+    const mapsUrl = hasCoords
+      ? `https://www.google.com/maps/search/?api=1&query=${target.lat},${target.lon}`
+      : `https://www.google.com/maps/search/?api=1&query=${searchQ}`;
+    document.getElementById('blip-place-name').innerHTML=
+      `<a href="${mapsUrl}" target="_blank" rel="noopener"
+          style="color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-dark)"
+          >${target.name} <span style="font-size:0.7em;opacity:0.7">↗</span></a>`;
     document.getElementById('blip-place-type').textContent=
       [target.type, target.cuisine].filter(Boolean).join(' · ');
-    document.getElementById('blip-place-addr').textContent=target.address||'';
+    document.getElementById('blip-place-addr').innerHTML=
+      target.address
+        ? `<a href="${mapsUrl}" target="_blank" rel="noopener" style="color:var(--text-3);text-decoration:underline;text-decoration-color:var(--border-2)">${target.address}</a>`
+        : '';
     document.getElementById('blip-place-dist').textContent=
       target.distM!=null ? metersToMileStr(target.distM)+' away' : '';
     document.getElementById('blip-view-full-btn').style.display='none';
@@ -4175,8 +4194,16 @@ function blipMorphToOutcome(target, originPos){
     const ratingText = target.mode==='profile'
       ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
       : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
+    const fullRec=savedReviews.find(r=>r.id===target.recordId);
+    const recLoc=fullRec&&fullRec.location;
+    const revMapsUrl=recLoc
+      ? `https://www.google.com/maps/search/?api=1&query=${recLoc.lat},${recLoc.lon}`
+      : null;
+    const navLink=revMapsUrl
+      ? ` <a href="${revMapsUrl}" target="_blank" rel="noopener" style="font-size:0.8em;color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-dark)">navigate ↗</a>`
+      : '';
     reviewOut.innerHTML=
-      `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}</div>
+      `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}${navLink}</div>
        <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>`;
     document.getElementById('blip-view-full-btn').style.display='block';
   }
