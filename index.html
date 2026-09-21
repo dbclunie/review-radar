@@ -519,7 +519,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.19</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.20</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -3481,6 +3481,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.20',notes:[
+  'Blip map handoff now uses the place name and address instead of raw coordinates \u2014 e.g. \"The Butcher Shop, 670 Gateway Blvd\" instead of \"37.654,-122.407\"'
+]},
 {v:'3.19',notes:[
   'Blip: tapping the name or address of a nearby restaurant now hands off to Google Maps for navigation \u2014 uses coordinates for precision when available, falls back to a name+address search otherwise',
   'Blip: saved reviews with a stored location also now show a \"navigate \u2197\" link in the outcome'
@@ -4168,11 +4171,8 @@ function blipMorphToOutcome(target, originPos){
     // search if somehow absent. The geo: URI opens Google Maps natively on Android;
     // maps.apple.com opens Maps on iOS. We use geo: with a label and a fallback
     // href pointing at Google Maps so it works on both.
-    const hasCoords = target.lat!=null && target.lon!=null;
     const searchQ = encodeURIComponent([target.name, target.address].filter(Boolean).join(', '));
-    const mapsUrl = hasCoords
-      ? `https://www.google.com/maps/search/?api=1&query=${target.lat},${target.lon}`
-      : `https://www.google.com/maps/search/?api=1&query=${searchQ}`;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${searchQ}`;
     document.getElementById('blip-place-name').innerHTML=
       `<a href="${mapsUrl}" target="_blank" rel="noopener"
           style="color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-dark)"
@@ -4196,8 +4196,11 @@ function blipMorphToOutcome(target, originPos){
       : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
     const fullRec=savedReviews.find(r=>r.id===target.recordId);
     const recLoc=fullRec&&fullRec.location;
-    const revMapsUrl=recLoc
-      ? `https://www.google.com/maps/search/?api=1&query=${recLoc.lat},${recLoc.lon}`
+    const revSearchQ=recLoc
+      ? encodeURIComponent([fullRec.item, recLoc.address||`${recLoc.lat},${recLoc.lon}`].filter(Boolean).join(', '))
+      : null;
+    const revMapsUrl=revSearchQ
+      ? `https://www.google.com/maps/search/?api=1&query=${revSearchQ}`
       : null;
     const navLink=revMapsUrl
       ? ` <a href="${revMapsUrl}" target="_blank" rel="noopener" style="font-size:0.8em;color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-dark)">navigate ↗</a>`
