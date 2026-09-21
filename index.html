@@ -445,6 +445,13 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .mode-example.sel{border-color:var(--accent);box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
 .mode-example.unsel{opacity:0.8}
 #blip-filters-backdrop{display:none}
+/* Three-state tag: neutral → include (green) → exclude (red) → neutral */
+.blip-tag{display:inline-flex;align-items:center;gap:5px;font-size:0.72em;padding:4px 8px;
+  border-radius:12px;border:0.5px solid var(--border-2);background:var(--surface-2);
+  color:var(--text-3);cursor:pointer;user-select:none;transition:background .12s,color .12s,border-color .12s}
+.blip-tag.include{background:rgba(151,196,89,0.15);border-color:var(--good);color:var(--good)}
+.blip-tag.exclude{background:rgba(226,75,74,0.15);border-color:var(--bad);color:var(--bad)}
+.blip-tag-icon{font-size:0.85em;min-width:10px;text-align:center}
 #blip-filters-backdrop.open{display:block}
 #blip-filters{opacity:0;pointer-events:none;transform:translateY(-6px)}
 #blip-filters.open{opacity:1;pointer-events:auto;transform:translateY(0)}
@@ -519,7 +526,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.21</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.22</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -678,6 +685,26 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
         <input type="checkbox" id="blip-f-recency" checked onchange="blipRebuild()">
         <span>favor things I haven't picked recently</span>
       </label>
+    </div>
+
+    <!-- cuisine + style filters — only shown for nearby-places pool -->
+    <div id="blip-nearby-filters" style="display:none">
+      <div style="height:10px;border-top:0.5px solid var(--border);margin-top:10px"></div>
+      <div class="field-label" style="margin-top:8px">cuisine</div>
+      <div id="blip-cuisine-list" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
+      <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+        <input id="blip-cuisine-custom" type="text" placeholder="add your own…"
+          style="flex:1;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.78em;padding:5px 8px;outline:none"
+          oninput="blipAddCustomTag('cuisine')">
+      </div>
+      <div style="height:10px;border-top:0.5px solid var(--border);margin-top:10px"></div>
+      <div class="field-label" style="margin-top:8px">style / format</div>
+      <div id="blip-style-list" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
+      <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+        <input id="blip-style-custom" type="text" placeholder="add your own…"
+          style="flex:1;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.78em;padding:5px 8px;outline:none"
+          oninput="blipAddCustomTag('style')">
+      </div>
     </div>
   </div>
 
@@ -3489,6 +3516,12 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.22',notes:[
+  'Blip nearby restaurants: cuisine and style/format filters — tap a tag to cycle neutral \u2192 include (green \u2713) \u2192 exclude (red \u2717) \u2192 neutral. includes must match at least one, excludes are always removed. optional, only shown for the nearby restaurants pool',
+  'custom cuisine/style tags: type and press space or comma to add your own term',
+  'cuisines: american, chinese, filipino, french, german, greek, indian, italian, japanese, korean, mediterranean, mexican, middle eastern, spanish, swedish, thai, vietnamese',
+  'styles: bar, bistro, brewery, buffet, caf\u00e9, fast casual, fast food, fine dining, food court, food truck, gastropub, pop-up, pub'
+]},
 {v:'3.21',notes:[
   'Blip: renamed \"narrow it down\" button to \"filters\"',
   'Blip: radius now includes 1 mile option and a custom entry field (0.1\u2013100 miles) for any distance not in the preset list'
@@ -3754,6 +3787,7 @@ function openBlip(){
   document.getElementById('blip-view-full-btn').style.display='none';
   populateBlipCategorySelect();
   blipLastRatingMode=undefined;
+  blipInitTagFilters();
   blipRebuild();
   showScreen('s-blip');
 }
@@ -3892,10 +3926,114 @@ function blipCustomRadiusChanged(){
 function blipPoolChanged(){
   const pool=blipCurrentPool();
   const isLocation = pool==='nearby-reviews' || pool==='nearby-places';
+  const isNearbyPlaces = pool==='nearby-places';
   document.getElementById('blip-radius-row').style.display=isLocation?'block':'none';
-  document.getElementById('blip-reviews-filters').style.display=pool==='nearby-places'?'none':'block';
+  document.getElementById('blip-reviews-filters').style.display=isNearbyPlaces?'none':'block';
+  document.getElementById('blip-nearby-filters').style.display=isNearbyPlaces?'block':'none';
   blipNearbyPlaces=[]; // clear cached places when pool type changes
   blipRebuild();
+}
+
+// ── CUISINE / STYLE TAG FILTERS ─────────────────────────────────────────
+// Each tag cycles neutral → include → exclude → neutral on tap.
+// State maps: key=term (lowercase), value='include'|'exclude'|undefined
+const BLIP_CUISINES=['american','chinese','filipino','french','german','greek',
+  'indian','italian','japanese','korean','mediterranean','mexican','middle eastern',
+  'spanish','swedish','thai','vietnamese'];
+const BLIP_STYLES=['bar','bistro','brewery','buffet','café','fast casual',
+  'fast food','fine dining','food court','food truck','gastropub','pop-up','pub'];
+
+let blipTagState={cuisine:{}, style:{}};
+// custom entries added by the user this session
+let blipCustomTags={cuisine:[], style:[]};
+
+function blipCycleTag(type, term){
+  const cur=blipTagState[type][term];
+  if(!cur) blipTagState[type][term]='include';
+  else if(cur==='include') blipTagState[type][term]='exclude';
+  else delete blipTagState[type][term];
+  blipRenderTags(type);
+  blipRebuild();
+}
+
+function blipRenderTags(type){
+  const list=document.getElementById(`blip-${type}-list`);
+  const presets=type==='cuisine'?BLIP_CUISINES:BLIP_STYLES;
+  const all=[...presets,...blipCustomTags[type]];
+  list.innerHTML='';
+  // wrap in a flex-wrap container
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;flex-wrap:wrap;gap:5px';
+  all.forEach(term=>{
+    const state=blipTagState[type][term]||'neutral';
+    const icon=state==='include'?'✓':state==='exclude'?'✗':'·';
+    const btn=document.createElement('span');
+    btn.className='blip-tag'+(state!=='neutral'?' '+state:'');
+    btn.innerHTML=`<span class="blip-tag-icon">${icon}</span>${term}`;
+    btn.onclick=()=>blipCycleTag(type,term);
+    wrap.appendChild(btn);
+  });
+  list.appendChild(wrap);
+}
+
+function blipAddCustomTag(type){
+  const input=document.getElementById(`blip-${type}-custom`);
+  const term=input.value.trim().toLowerCase();
+  if(!term) return;
+  const presets=type==='cuisine'?BLIP_CUISINES:BLIP_STYLES;
+  if(presets.includes(term)||blipCustomTags[type].includes(term)) return;
+  if(input.value.endsWith(' ')||input.value.endsWith(',')){
+    // commit the tag when user presses space or comma
+    blipCustomTags[type].push(term.replace(/,$/,'').trim());
+    input.value='';
+    blipRenderTags(type);
+  }
+  // don't rebuild until committed — just re-render to show the pending typed value
+}
+
+function blipTagsMatchPlace(place){
+  // Returns true if the place passes the active cuisine and style tag filters.
+  // Include rules: if ANY includes are set, place must match at least one.
+  // Exclude rules: if ANY excludes are set, place must NOT match any.
+  const cuisineTag=(place.cuisine||'').toLowerCase();
+  const amenityTag=(place.type||'').toLowerCase();
+  // Map Overpass amenity values to style labels
+  const amenityToStyle={
+    fast_food:'fast food', food_court:'food court',
+    bar:'bar', pub:'pub', cafe:'café',
+  };
+  const placeStyle=amenityToStyle[amenityTag]||amenityTag;
+
+  for(const type of ['cuisine','style']){
+    const vals=blipTagState[type];
+    const includes=Object.entries(vals).filter(([,v])=>v==='include').map(([k])=>k);
+    const excludes=Object.entries(vals).filter(([,v])=>v==='exclude').map(([k])=>k);
+    const placeVal=type==='cuisine'?cuisineTag:placeStyle;
+    // each cuisine tag from Overpass can be a semicolon-separated list
+    const placeTerms=placeVal.split(/[;,]/).map(t=>t.trim()).filter(Boolean);
+
+    if(includes.length>0){
+      const matched=includes.some(inc=>placeTerms.some(t=>t.includes(inc)||inc.includes(t)));
+      if(!matched) return false;
+    }
+    if(excludes.length>0){
+      const matched=excludes.some(exc=>placeTerms.some(t=>t.includes(exc)||exc.includes(t)));
+      if(matched) return false;
+    }
+  }
+  return true;
+}
+
+function blipInitTagFilters(){
+  blipRenderTags('cuisine');
+  blipRenderTags('style');
+}
+
+function blipResetTagFilters(){
+  blipTagState={cuisine:{}, style:{}};
+  blipCustomTags={cuisine:[], style:[]};
+  blipRenderTags('cuisine');
+  blipRenderTags('style');
 }
 
 function haversineM(lat1,lon1,lat2,lon2){
@@ -3964,7 +4102,9 @@ async function blipRebuildNearbyPlaces(){
   result.innerHTML=`<div style="color:var(--text-4);font-size:0.75em">searching nearby…</div>`;
   try{
     const places=await blipFetchNearbyPlaces(blipUserLat,blipUserLon,radiusM);
-    blipNearbyPlaces=places.filter(p=>!blipExcludedThisSession.has(p.id));
+    blipNearbyPlaces=places.filter(p=>
+      !blipExcludedThisSession.has(p.id) && blipTagsMatchPlace(p)
+    );
     blipPool=blipNearbyPlaces;
     blipHeat=blipPool.map(()=>0);
     document.getElementById('blip-hdr-count').textContent=blipPool.length+' options';
