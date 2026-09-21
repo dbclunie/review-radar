@@ -517,7 +517,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.15</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.16</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -642,16 +642,33 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div tabindex="0" class="btn" style="margin-bottom:8px;font-size:0.75em;flex-shrink:0" onclick="toggleBlipFilters()">narrow it down ▾</div>
   <div class="filters-backdrop" id="blip-filters-backdrop" onclick="toggleBlipFilters()" style="position:fixed;inset:0;z-index:15;display:none"></div>
   <div class="filters" id="blip-filters" style="position:absolute;left:18px;right:18px;top:88px;z-index:20;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.45);padding:10px;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease">
-    <div class="field-label">category</div>
-    <select id="blip-f-cat" class="filter-select" onchange="blipRebuild()"></select>
-    <div style="height:8px"></div>
-    <div class="field-label">rating</div>
-    <select id="blip-f-grade" class="filter-select" onchange="blipRebuild()"></select>
-    <div style="height:8px"></div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:0.75em;color:var(--text-2)">
-      <input type="checkbox" id="blip-f-recency" checked onchange="blipRebuild()">
-      <span>favor things I haven't picked recently</span>
-    </label>
+    <div class="field-label">pool</div>
+    <select id="blip-f-pool" class="filter-select" onchange="blipPoolChanged()">
+      <option value="reviews">your reviews</option>
+      <option value="nearby-reviews">your reviews nearby</option>
+      <option value="nearby-places">nearby restaurants</option>
+    </select>
+    <div id="blip-radius-row" style="display:none;margin-top:8px">
+      <div class="field-label">radius</div>
+      <select id="blip-f-radius" class="filter-select" onchange="blipRebuild()">
+        <option value="2.5">2.5 miles</option>
+        <option value="5" selected>5 miles</option>
+        <option value="10">10 miles</option>
+        <option value="20">20 miles</option>
+      </select>
+    </div>
+    <div id="blip-reviews-filters" style="margin-top:8px">
+      <div class="field-label">category</div>
+      <select id="blip-f-cat" class="filter-select" onchange="blipRebuild()"></select>
+      <div style="height:8px"></div>
+      <div class="field-label">rating</div>
+      <select id="blip-f-grade" class="filter-select" onchange="blipRebuild()"></select>
+      <div style="height:8px"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.75em;color:var(--text-2)">
+        <input type="checkbox" id="blip-f-recency" checked onchange="blipRebuild()">
+        <span>favor things I haven't picked recently</span>
+      </label>
+    </div>
   </div>
 
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:0;position:relative" id="blip-scope-wrap">
@@ -659,6 +676,13 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     <div id="blip-outcome" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transform:scale(0.05);transform-origin:150px 150px;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1)">
       <svg viewBox="0 0 300 300" style="width:100%;max-width:260px;cursor:pointer" id="blip-outcome-radar" onclick="openRadarModal(blipOutcomeRecordId)"></svg>
       <div id="blip-outcome-info" style="text-align:center;margin-top:6px"></div>
+      <!-- place outcome (nearby-places pool) — shown instead of the radar when there's no review -->
+      <div id="blip-place-outcome" style="display:none;text-align:center;padding:12px 16px">
+        <div id="blip-place-name" style="font-size:1.15em;font-weight:bold;color:var(--accent);line-height:1.3"></div>
+        <div id="blip-place-type" style="font-size:0.72em;color:var(--text-4);margin-top:3px"></div>
+        <div id="blip-place-addr" style="font-size:0.72em;color:var(--text-3);margin-top:5px;line-height:1.4"></div>
+        <div id="blip-place-dist" style="font-size:0.7em;color:var(--text-4);margin-top:3px"></div>
+      </div>
     </div>
     <div id="blip-result" style="text-align:center;min-height:40px;margin-top:6px"></div>
   </div>
@@ -3455,6 +3479,12 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.16',notes:[
+  'Blip now has three pool options: your reviews (existing behavior), your reviews nearby (your reviewed locations within a chosen radius), and nearby restaurants (live Overpass API search for restaurants/cafes/food within the radius, no review needed)',
+  'radius selector: 2.5 / 5 / 10 / 20 miles \u2014 shown only when a location-based pool is selected',
+  'nearby restaurant picks show name, type, cuisine, address, and distance instead of a radar chart (no review to show)',
+  'pool source and radius reset cleanly between sessions'
+]},
 {v:'3.15',notes:[
   'pentagon grid lines and spokes on every radar chart (viewing a review, the expectation-vs-actual comparison, and the shared image) now match the same brightness as the criteria labels, instead of being much dimmer \u2014 the score shape and selected value stay the brightest elements'
 ]},
@@ -3742,28 +3772,161 @@ function blipGradeScore(rec){
 }
 
 function blipRebuild(){
+  const pool=blipCurrentPool();
+
+  // ── pool 3: live nearby restaurants ────────────────────────────────────
+  if(pool==='nearby-places'){
+    blipRebuildNearbyPlaces(); // async — sets blipPool itself and returns
+    return;
+  }
+
+  // ── pools 1 & 2: from saved reviews ────────────────────────────────────
   const catId=document.getElementById('blip-f-cat').value;
   const mode=currentBlipCatMode();
   if(mode!==blipLastRatingMode){ renderBlipRatingOptions(mode); blipLastRatingMode=mode; }
   const min=+document.getElementById('blip-f-grade').value;
+  const radiusM = pool==='nearby-reviews' ? milesToMeters(blipCurrentRadiusMiles()) : null;
+
+  // If nearby-reviews needs geolocation and we haven't got it yet, kick that off
+  // and rebuild once it resolves.
+  if(pool==='nearby-reviews' && blipUserLat===null){
+    document.getElementById('blip-result').innerHTML=
+      `<div style="color:var(--text-4);font-size:0.75em">finding your location…</div>`;
+    blipGetUserLocation().then(ok=>{
+      if(!ok){
+        document.getElementById('blip-result').innerHTML=
+          `<div style="color:var(--bad);font-size:0.75em">location access needed for nearby reviews</div>`;
+        blipPool=[]; blipHeat=[];
+        document.getElementById('blip-hdr-count').textContent='0 options';
+      } else { blipRebuild(); }
+    });
+    return;
+  }
 
   blipPool=getBlipCandidates().filter(d=>{
     if(blipExcludedThisSession.has(d.recordId)) return false;
     if(catId!=='all' && d.catId!==catId) return false;
     if(mode==='profile') return (d.intensity||0)>=min;
-    if(d.mode==='profile') return true; // grade threshold doesn't apply to it
-    return blipGradeScore(d)>=min;
+    if(d.mode==='profile') return true;
+    if(blipGradeScore(d)<min) return false;
+    // pool 2: require a stored location within radius
+    if(radiusM!==null){
+      const rec=savedReviews.find(r=>r.id===d.recordId);
+      if(!rec||!rec.location||rec.location.lat==null||rec.location.lon==null) return false;
+      return haversineM(blipUserLat,blipUserLon,rec.location.lat,rec.location.lon)<=radiusM;
+    }
+    return true;
   });
 
   blipHeat=blipPool.map(()=>0);
   document.getElementById('blip-hdr-count').textContent=blipPool.length+' options';
+  const label=pool==='nearby-reviews'
+    ? `${blipPool.length} of your reviews within ${blipCurrentRadiusMiles()} miles`
+    : `${blipPool.length} match your filters`;
   document.getElementById('blip-result').innerHTML=
-    `<div style="color:var(--text-4);font-size:0.75em">${blipPool.length} match your filters</div>`;
+    `<div style="color:var(--text-4);font-size:0.75em">${label}</div>`;
   document.getElementById('blip-radar').classList.remove('blip-fadeout');
   document.getElementById('blip-outcome').classList.remove('show-outcome');
   const goBtn=document.getElementById('blip-go');
   if(goBtn.textContent.startsWith('blip again')) goBtn.textContent=`blip again (${blipPool.length} left)`;
   blipDraw(false,null);
+}
+
+// ── BLIP POOL HELPERS ────────────────────────────────────────────────────
+
+function blipCurrentPool(){ return document.getElementById('blip-f-pool').value; }
+function blipCurrentRadiusMiles(){ return parseFloat(document.getElementById('blip-f-radius').value)||5; }
+
+function blipPoolChanged(){
+  const pool=blipCurrentPool();
+  const isLocation = pool==='nearby-reviews' || pool==='nearby-places';
+  document.getElementById('blip-radius-row').style.display=isLocation?'block':'none';
+  document.getElementById('blip-reviews-filters').style.display=pool==='nearby-places'?'none':'block';
+  blipNearbyPlaces=[]; // clear cached places when pool type changes
+  blipRebuild();
+}
+
+function haversineM(lat1,lon1,lat2,lon2){
+  const R=6371000, r=Math.PI/180;
+  const dLat=(lat2-lat1)*r, dLon=(lon2-lon1)*r;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function milesToMeters(mi){ return mi*1609.344; }
+function metersToMileStr(m){ const mi=m/1609.344; return mi<0.1?Math.round(m)+'m':mi.toFixed(1)+' mi'; }
+
+let blipUserLat=null, blipUserLon=null;
+let blipNearbyPlaces=[];  // cached Overpass results for the current query
+let blipNearbyLoading=false;
+
+async function blipGetUserLocation(){
+  if(blipUserLat!==null) return true;
+  return new Promise(resolve=>{
+    navigator.geolocation.getCurrentPosition(
+      p=>{ blipUserLat=p.coords.latitude; blipUserLon=p.coords.longitude; resolve(true); },
+      ()=>resolve(false),
+      {timeout:8000, maximumAge:60000}
+    );
+  });
+}
+
+async function blipFetchNearbyPlaces(lat,lon,radiusM){
+  // Overpass API query for amenity=restaurant|cafe|fast_food|food_court|bar within radius
+  const q=`[out:json][timeout:15];
+(
+  node["amenity"~"^(restaurant|cafe|fast_food|food_court|bar)$"](around:${Math.round(radiusM)},${lat},${lon});
+  way["amenity"~"^(restaurant|cafe|fast_food|food_court|bar)$"](around:${Math.round(radiusM)},${lat},${lon});
+);
+out center 80;`;
+  const url=`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`;
+  const resp=await Promise.race([
+    fetch(url),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),15000))
+  ]);
+  if(!resp.ok) throw new Error('Overpass HTTP '+resp.status);
+  const data=await resp.json();
+  return (data.elements||[]).map(el=>{
+    const lat2=el.lat||(el.center&&el.center.lat);
+    const lon2=el.lon||(el.center&&el.center.lon);
+    const t=el.tags||{};
+    return {
+      id:'osm:'+el.type+':'+el.id,
+      name:t.name||t['name:en']||'Unnamed place',
+      type:t.amenity||'restaurant',
+      address:[t['addr:housenumber'],t['addr:street'],t['addr:city']].filter(Boolean).join(' '),
+      cuisine:t.cuisine||'',
+      lat:lat2, lon:lon2,
+      distM: (lat2&&lon2)?haversineM(lat,lon,lat2,lon2):null
+    };
+  }).filter(p=>p.name && p.lat).sort((a,b)=>(a.distM||0)-(b.distM||0));
+}
+
+async function blipRebuildNearbyPlaces(){
+  const radiusM=milesToMeters(blipCurrentRadiusMiles());
+  const result=document.getElementById('blip-result');
+  result.innerHTML=`<div style="color:var(--text-4);font-size:0.75em">finding your location…</div>`;
+  const ok=await blipGetUserLocation();
+  if(!ok){
+    result.innerHTML=`<div style="color:var(--bad);font-size:0.75em">location access needed for nearby restaurants</div>`;
+    blipPool=[]; blipHeat=[];
+    document.getElementById('blip-hdr-count').textContent='0 options';
+    return;
+  }
+  result.innerHTML=`<div style="color:var(--text-4);font-size:0.75em">searching nearby…</div>`;
+  try{
+    const places=await blipFetchNearbyPlaces(blipUserLat,blipUserLon,radiusM);
+    blipNearbyPlaces=places.filter(p=>!blipExcludedThisSession.has(p.id));
+    blipPool=blipNearbyPlaces;
+    blipHeat=blipPool.map(()=>0);
+    document.getElementById('blip-hdr-count').textContent=blipPool.length+' options';
+    result.innerHTML=`<div style="color:var(--text-4);font-size:0.75em">${blipPool.length} restaurants within ${blipCurrentRadiusMiles()} miles</div>`;
+    blipDraw(false,null);
+  }catch(e){
+    console.error('Blip Overpass fetch error:',e);
+    result.innerHTML=`<div style="color:var(--bad);font-size:0.75em">couldn't load nearby places — try again</div>`;
+    blipPool=[]; blipHeat=[];
+    document.getElementById('blip-hdr-count').textContent='0 options';
+  }
 }
 
 function blipPosOf(i,n){
@@ -3823,13 +3986,14 @@ function blipDraw(locked, lockedTarget, pingIntensity){
       s+=`<text x="${p.x.toFixed(1)}" y="${(p.y-13).toFixed(1)}" text-anchor="middle" font-size="9"
            font-family="'Special Elite',monospace"
            fill="${isLockedTarget?'var(--accent-light)':'var(--text-4)'}"
-           opacity="${isLockedTarget?1:Math.min(1,Math.max(0,heat-0.15)*2).toFixed(2)}">${d.item}</text>`;
+           opacity="${isLockedTarget?1:Math.min(1,Math.max(0,heat-0.15)*2).toFixed(2)}">${d.item||d.name||''}</text>`;
     }
   });
   document.getElementById('blip-radar').innerHTML=s;
 }
 
 function blipWeightFor(d){
+  if(d.days==null) return 1; // nearby-places pool entries have no recency data
   const useRecency=document.getElementById('blip-f-recency').checked;
   return useRecency ? Math.min(1, 0.25 + d.days/45) : 1;
 }
@@ -3849,6 +4013,9 @@ function blipResetToRadarInstant(){
   radarEl.style.opacity='1'; radarEl.style.transform='scale(1)';
   outEl.style.opacity='0'; outEl.style.pointerEvents='none'; outEl.style.transform='scale(0.05)';
   document.getElementById('blip-view-full-btn').style.display='none';
+  document.getElementById('blip-place-outcome').style.display='none';
+  document.getElementById('blip-outcome-radar').style.display='';
+  document.getElementById('blip-outcome-info').style.display='';
   void radarEl.offsetWidth;
   radarEl.style.transition=''; outEl.style.transition='';
 }
@@ -3953,41 +4120,61 @@ function blipFinishLock(target){
   const originIdx=blipPool.indexOf(target);
   const originPos=blipPosOf(originIdx, blipPool.length);
 
-  blipExcludedThisSession.add(target.recordId);
+  // Use id for places, recordId for reviews — they're different pool shapes
+  const excludeKey=target.recordId||target.id;
+  blipExcludedThisSession.add(excludeKey);
   blipPool=blipPool.filter(p=>p!==target);
   blipHeat=blipPool.map(()=>0);
 
-  const ratingText = target.mode==='profile'
-    ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
-    : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
-  document.getElementById('blip-result').innerHTML=''; // all outcome text lives in blip-outcome-info now — see why below
+  document.getElementById('blip-result').innerHTML='';
   document.getElementById('blip-go').textContent=`blip again (${blipPool.length} left)`;
   blipMorphToOutcome(target, originPos);
 }
 
 let blipOutcomeRecordId=null;
 function blipMorphToOutcome(target, originPos){
-  blipOutcomeRecordId=target.recordId;
+  blipOutcomeRecordId=target.recordId||null;
   const originPct=`${(originPos.x/300*100).toFixed(1)}% ${(originPos.y/300*100).toFixed(1)}%`;
   const radarEl=document.getElementById('blip-radar');
   const outEl=document.getElementById('blip-outcome');
   radarEl.style.transformOrigin=originPct;
   outEl.style.transformOrigin=originPct;
 
+  const isPlace=!target.recordId; // nearby-places pool entries have no recordId
   const rv=document.getElementById('blip-outcome-radar');
-  rv.innerHTML = target.scores ? radarSVG(target.axes, target.scores) : '';
-  const ratingText = target.mode==='profile'
-    ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
-    : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
-  document.getElementById('blip-outcome-info').innerHTML=
-    `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}</div>
-     <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>`;
+  const placeOut=document.getElementById('blip-place-outcome');
+  const reviewOut=document.getElementById('blip-outcome-info');
+
+  if(isPlace){
+    rv.innerHTML='';
+    rv.style.display='none';
+    reviewOut.style.display='none';
+    placeOut.style.display='block';
+    document.getElementById('blip-place-name').textContent=target.name;
+    document.getElementById('blip-place-type').textContent=
+      [target.type, target.cuisine].filter(Boolean).join(' · ');
+    document.getElementById('blip-place-addr').textContent=target.address||'';
+    document.getElementById('blip-place-dist').textContent=
+      target.distM!=null ? metersToMileStr(target.distM)+' away' : '';
+    document.getElementById('blip-view-full-btn').style.display='none';
+  } else {
+    rv.style.display='';
+    placeOut.style.display='none';
+    reviewOut.style.display='';
+    rv.innerHTML = target.scores ? radarSVG(target.axes, target.scores) : '';
+    const ratingText = target.mode==='profile'
+      ? `intensity ${target.intensity!=null?target.intensity:'?'}/5`
+      : `${target.total}/${target.max} · ${grade(target.total,target.max).g}`;
+    reviewOut.innerHTML=
+      `<div style="color:var(--accent);font-size:1.05em;font-weight:bold">${target.item}</div>
+       <div style="color:var(--text-4);font-size:0.72em;margin-top:2px">${target.catLabel} · ${ratingText} · last picked ${target.days}d ago</div>`;
+    document.getElementById('blip-view-full-btn').style.display='block';
+  }
 
   radarEl.classList.add('blip-fadeout');
   radarEl.style.opacity='0'; radarEl.style.transform='scale(0.08)';
   outEl.classList.add('show-outcome');
   outEl.style.opacity='1'; outEl.style.pointerEvents='auto'; outEl.style.transform='scale(1)';
-  document.getElementById('blip-view-full-btn').style.display='block';
 }
 
 function blipViewFullReview(){
