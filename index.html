@@ -446,6 +446,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .mode-example.unsel{opacity:0.8}
 #blip-filters-backdrop{display:none}
 #blip-filters-backdrop.open{display:block}
+#blip-filters{opacity:0;pointer-events:none;transform:translateY(-6px)}
 #blip-filters.open{opacity:1;pointer-events:auto;transform:translateY(0)}
 #blip-radar{transition:opacity .55s ease,transform .55s cubic-bezier(.4,0,.2,1)}
 #blip-outcome{transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1)}
@@ -518,7 +519,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.17</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.18</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -642,7 +643,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
   <div tabindex="0" class="btn" style="margin-bottom:8px;font-size:0.75em;flex-shrink:0" onclick="toggleBlipFilters()">narrow it down ▾</div>
   <div class="filters-backdrop" id="blip-filters-backdrop" onclick="toggleBlipFilters()" style="position:fixed;inset:0;z-index:15"></div>
-  <div class="filters" id="blip-filters" style="position:absolute;left:18px;right:18px;top:88px;z-index:20;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.45);padding:10px;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease">
+  <div class="filters" id="blip-filters" style="position:absolute;left:18px;right:18px;top:88px;z-index:20;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.45);padding:10px;transition:opacity .18s ease,transform .18s ease">
     <div class="field-label">pool</div>
     <select id="blip-f-pool" class="filter-select" onchange="blipPoolChanged()">
       <option value="reviews">your reviews</option>
@@ -3480,6 +3481,11 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.18',notes:[
+  'fixed \"narrow it down\" on Blip — the filter panel\'s default closed state (opacity:0, pointer-events:none) was set as inline styles, which always beat CSS class rules in specificity, so the .open class could never actually override them. moved defaults into CSS and verified the panel now opens correctly',
+  'Blip now has three pool sources: your reviews (unchanged), your reviews nearby (filtered by distance), and nearby restaurants (live Overpass API search within chosen radius)',
+  'radius selector: 2.5 / 5 / 10 / 20 miles, shown only when a location-based pool is selected'
+]},
 {v:'3.17',notes:[
   'fixed \"narrow it down\" button doing nothing on the Blip screen \u2014 new variable declarations were placed after the code that used them, causing a silent crash that also prevented any other JS from running on that screen'
 ]},
