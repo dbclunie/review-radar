@@ -519,7 +519,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.20</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.21</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -641,7 +641,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 <div class="screen" id="s-blip">
   <div class="hdr" style="flex-shrink:0"><span>BLIP</span><span id="blip-hdr-count"></span></div>
 
-  <div tabindex="0" class="btn" style="margin-bottom:8px;font-size:0.75em;flex-shrink:0" onclick="toggleBlipFilters()">narrow it down ▾</div>
+  <div tabindex="0" class="btn" style="margin-bottom:8px;font-size:0.75em;flex-shrink:0" onclick="toggleBlipFilters()">filters ▾</div>
   <div class="filters-backdrop" id="blip-filters-backdrop" onclick="toggleBlipFilters()" style="position:fixed;inset:0;z-index:15"></div>
   <div class="filters" id="blip-filters" style="position:absolute;left:18px;right:18px;top:88px;z-index:20;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.45);padding:10px;transition:opacity .18s ease,transform .18s ease">
     <div class="field-label">pool</div>
@@ -652,12 +652,20 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </select>
     <div id="blip-radius-row" style="display:none;margin-top:8px">
       <div class="field-label">radius</div>
-      <select id="blip-f-radius" class="filter-select" onchange="blipRebuild()">
+      <select id="blip-f-radius" class="filter-select" onchange="blipRadiusChanged()">
+        <option value="1">1 mile</option>
         <option value="2.5">2.5 miles</option>
         <option value="5" selected>5 miles</option>
         <option value="10">10 miles</option>
         <option value="20">20 miles</option>
+        <option value="custom">custom…</option>
       </select>
+      <div id="blip-custom-radius-row" style="display:none;margin-top:6px;display:none">
+        <input id="blip-f-radius-custom" type="number" min="0.1" max="100" step="0.1"
+          placeholder="miles (max 100)"
+          style="width:100%;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85em;padding:7px 10px;outline:none"
+          oninput="blipCustomRadiusChanged()">
+      </div>
     </div>
     <div id="blip-reviews-filters" style="margin-top:8px">
       <div class="field-label">category</div>
@@ -3481,6 +3489,10 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.21',notes:[
+  'Blip: renamed \"narrow it down\" button to \"filters\"',
+  'Blip: radius now includes 1 mile option and a custom entry field (0.1\u2013100 miles) for any distance not in the preset list'
+]},
 {v:'3.20',notes:[
   'Blip map handoff now uses the place name and address instead of raw coordinates \u2014 e.g. \"The Butcher Shop, 670 Gateway Blvd\" instead of \"37.654,-122.407\"'
 ]},
@@ -3855,7 +3867,27 @@ function blipRebuild(){
 // ── BLIP POOL HELPERS ────────────────────────────────────────────────────
 
 function blipCurrentPool(){ return document.getElementById('blip-f-pool').value; }
-function blipCurrentRadiusMiles(){ return parseFloat(document.getElementById('blip-f-radius').value)||5; }
+function blipCurrentRadiusMiles(){
+  const sel=document.getElementById('blip-f-radius').value;
+  if(sel==='custom'){
+    const v=parseFloat(document.getElementById('blip-f-radius-custom').value);
+    return Math.min(100, Math.max(0.1, isNaN(v)?5:v));
+  }
+  return parseFloat(sel)||5;
+}
+
+function blipRadiusChanged(){
+  const isCustom=document.getElementById('blip-f-radius').value==='custom';
+  const customRow=document.getElementById('blip-custom-radius-row');
+  customRow.style.display=isCustom?'block':'none';
+  if(!isCustom) blipRebuild();
+  // if custom, wait for user to type before rebuilding (blipCustomRadiusChanged handles that)
+}
+
+function blipCustomRadiusChanged(){
+  const v=parseFloat(document.getElementById('blip-f-radius-custom').value);
+  if(!isNaN(v) && v>=0.1) blipRebuild();
+}
 
 function blipPoolChanged(){
   const pool=blipCurrentPool();
