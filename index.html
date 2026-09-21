@@ -444,6 +444,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 .mode-ex-text.expanded .clamp{display:block;-webkit-line-clamp:unset;overflow:visible}
 .mode-example.sel{border-color:var(--accent);box-shadow:0 0 0 1px rgba(242,166,35,0.25)}
 .mode-example.unsel{opacity:0.8}
+#blip-filters-backdrop{display:none}
 #blip-filters-backdrop.open{display:block}
 #blip-filters.open{opacity:1;pointer-events:auto;transform:translateY(0)}
 #blip-radar{transition:opacity .55s ease,transform .55s cubic-bezier(.4,0,.2,1)}
@@ -640,7 +641,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
   <div class="hdr" style="flex-shrink:0"><span>BLIP</span><span id="blip-hdr-count"></span></div>
 
   <div tabindex="0" class="btn" style="margin-bottom:8px;font-size:0.75em;flex-shrink:0" onclick="toggleBlipFilters()">narrow it down ▾</div>
-  <div class="filters-backdrop" id="blip-filters-backdrop" onclick="toggleBlipFilters()" style="position:fixed;inset:0;z-index:15;display:none"></div>
+  <div class="filters-backdrop" id="blip-filters-backdrop" onclick="toggleBlipFilters()" style="position:fixed;inset:0;z-index:15"></div>
   <div class="filters" id="blip-filters" style="position:absolute;left:18px;right:18px;top:88px;z-index:20;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.45);padding:10px;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s ease,transform .18s ease">
     <div class="field-label">pool</div>
     <select id="blip-f-pool" class="filter-select" onchange="blipPoolChanged()">
