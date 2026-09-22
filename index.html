@@ -526,7 +526,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.22</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.23</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -689,21 +689,54 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 
     <!-- cuisine + style filters — only shown for nearby-places pool -->
     <div id="blip-nearby-filters" style="display:none">
-      <div style="height:10px;border-top:0.5px solid var(--border);margin-top:10px"></div>
-      <div class="field-label" style="margin-top:8px">cuisine</div>
-      <div id="blip-cuisine-list" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
-      <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
-        <input id="blip-cuisine-custom" type="text" placeholder="add your own…"
-          style="flex:1;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.78em;padding:5px 8px;outline:none"
-          oninput="blipAddCustomTag('cuisine')">
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+
+      <!-- CUISINE -->
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:5px" onclick="blipToggleSection('cuisine')">
+        <span class="field-label" style="margin:0">cuisine</span>
+        <span id="blip-cuisine-arrow" style="font-size:0.8em;color:var(--text-4);transition:transform .15s">▸</span>
       </div>
-      <div style="height:10px;border-top:0.5px solid var(--border);margin-top:10px"></div>
-      <div class="field-label" style="margin-top:8px">style / format</div>
-      <div id="blip-style-list" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
-      <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
-        <input id="blip-style-custom" type="text" placeholder="add your own…"
-          style="flex:1;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.78em;padding:5px 8px;outline:none"
-          oninput="blipAddCustomTag('style')">
+      <!-- first-row preview — always visible -->
+      <div id="blip-cuisine-preview" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+      <!-- expanded full list — hidden by default -->
+      <div id="blip-cuisine-expanded" style="display:none;margin-top:4px">
+        <div id="blip-cuisine-rest" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+        <div style="margin-top:6px;display:flex;gap:5px;align-items:center">
+          <input id="blip-cuisine-custom" type="text" placeholder="add your own…"
+            style="flex:1;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.78em;padding:5px 8px;outline:none"
+            onkeydown="blipCustomKeydown(event,'cuisine')">
+          <button onclick="blipCommitCustomTag('cuisine')" style="background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text-2);font-size:0.72em;padding:5px 8px;cursor:pointer;white-space:nowrap;font-family:inherit">add</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+
+      <!-- STYLE -->
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:5px" onclick="blipToggleSection('style')">
+        <span class="field-label" style="margin:0">style / format</span>
+        <span id="blip-style-arrow" style="font-size:0.8em;color:var(--text-4);transition:transform .15s">▸</span>
+      </div>
+      <div id="blip-style-preview" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+      <div id="blip-style-expanded" style="display:none;margin-top:4px">
+        <div id="blip-style-rest" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+        <div style="margin-top:6px;display:flex;gap:5px;align-items:center">
+          <input id="blip-style-custom" type="text" placeholder="add your own…"
+            style="flex:1;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.78em;padding:5px 8px;outline:none"
+            onkeydown="blipCustomKeydown(event,'style')">
+          <button onclick="blipCommitCustomTag('style')" style="background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text-2);font-size:0.72em;padding:5px 8px;cursor:pointer;white-space:nowrap;font-family:inherit">add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save-permanently prompt, shown when user taps "add" for a custom tag -->
+  <div id="blip-save-tag-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:600;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--surface);border:0.5px solid var(--border-2);border-radius:10px;padding:20px;max-width:280px;width:100%;text-align:center">
+      <div id="blip-save-tag-label" style="font-size:0.85em;color:var(--text);margin-bottom:14px;line-height:1.4"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="blipSaveTagAnswer(true)" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:6px;padding:9px;font-family:inherit;font-weight:bold;cursor:pointer">save permanently</button>
+        <button onclick="blipSaveTagAnswer(false)" style="background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;padding:9px;font-family:inherit;color:var(--text);cursor:pointer">just this session</button>
+        <button onclick="document.getElementById('blip-save-tag-modal').style.display='none'" style="background:none;border:none;color:var(--text-4);font-size:0.75em;cursor:pointer;font-family:inherit">cancel</button>
       </div>
     </div>
   </div>
@@ -3516,6 +3549,11 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.23',notes:[
+  'Blip cuisine and style filters: sections now collapse by default showing only the first row, tap the label or arrow to expand',
+  'custom tags now ask save permanently vs this session only \u2014 permanently saved tags are stored locally and reappear every time you open Blip. session-only tags work identically but are forgotten when you leave',
+  'custom tags immediately go into the list as include so you can start filtering right away'
+]},
 {v:'3.22',notes:[
   'Blip nearby restaurants: cuisine and style/format filters — tap a tag to cycle neutral \u2192 include (green \u2713) \u2192 exclude (red \u2717) \u2192 neutral. includes must match at least one, excludes are always removed. optional, only shown for the nearby restaurants pool',
   'custom cuisine/style tags: type and press space or comma to add your own term',
@@ -3935,8 +3973,6 @@ function blipPoolChanged(){
 }
 
 // ── CUISINE / STYLE TAG FILTERS ─────────────────────────────────────────
-// Each tag cycles neutral → include → exclude → neutral on tap.
-// State maps: key=term (lowercase), value='include'|'exclude'|undefined
 const BLIP_CUISINES=['american','chinese','filipino','french','german','greek',
   'indian','italian','japanese','korean','mediterranean','mexican','middle eastern',
   'spanish','swedish','thai','vietnamese'];
@@ -3944,8 +3980,27 @@ const BLIP_STYLES=['bar','bistro','brewery','buffet','café','fast casual',
   'fast food','fine dining','food court','food truck','gastropub','pop-up','pub'];
 
 let blipTagState={cuisine:{}, style:{}};
-// custom entries added by the user this session
 let blipCustomTags={cuisine:[], style:[]};
+let blipSectionExpanded={cuisine:false, style:false};
+let blipPendingCustom={type:null, term:null};
+const BLIP_CUSTOM_KEY='rr_blip_custom_tags';
+
+function blipLoadCustomTags(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(BLIP_CUSTOM_KEY)||'{}');
+    if(saved.cuisine) saved.cuisine.forEach(t=>{ if(!BLIP_CUISINES.includes(t)&&!blipCustomTags.cuisine.includes(t)) blipCustomTags.cuisine.push(t); });
+    if(saved.style) saved.style.forEach(t=>{ if(!BLIP_STYLES.includes(t)&&!blipCustomTags.style.includes(t)) blipCustomTags.style.push(t); });
+  }catch(e){}
+}
+
+function blipSaveCustomTagPermanently(type, term){
+  try{
+    const saved=JSON.parse(localStorage.getItem(BLIP_CUSTOM_KEY)||'{}');
+    if(!saved[type]) saved[type]=[];
+    if(!saved[type].includes(term)) saved[type].push(term);
+    localStorage.setItem(BLIP_CUSTOM_KEY, JSON.stringify(saved));
+  }catch(e){}
+}
 
 function blipCycleTag(type, term){
   const cur=blipTagState[type][term];
@@ -3956,62 +4011,101 @@ function blipCycleTag(type, term){
   blipRebuild();
 }
 
-function blipRenderTags(type){
-  const list=document.getElementById(`blip-${type}-list`);
-  const presets=type==='cuisine'?BLIP_CUISINES:BLIP_STYLES;
-  const all=[...presets,...blipCustomTags[type]];
-  list.innerHTML='';
-  // wrap in a flex-wrap container
-  const wrap=document.createElement('div');
-  wrap.style.cssText='display:flex;flex-wrap:wrap;gap:5px';
-  all.forEach(term=>{
-    const state=blipTagState[type][term]||'neutral';
-    const icon=state==='include'?'✓':state==='exclude'?'✗':'·';
-    const btn=document.createElement('span');
-    btn.className='blip-tag'+(state!=='neutral'?' '+state:'');
-    btn.innerHTML=`<span class="blip-tag-icon">${icon}</span>${term}`;
-    btn.onclick=()=>blipCycleTag(type,term);
-    wrap.appendChild(btn);
-  });
-  list.appendChild(wrap);
+function blipMakeTagEl(type, term){
+  const state=blipTagState[type][term]||'neutral';
+  const icon=state==='include'?'\u2713':state==='exclude'?'\u2717':'\u00b7';
+  const btn=document.createElement('span');
+  btn.className='blip-tag'+(state!=='neutral'?' '+state:'');
+  btn.innerHTML=`<span class="blip-tag-icon">${icon}</span>${term}`;
+  btn.onclick=()=>blipCycleTag(type,term);
+  return btn;
 }
 
-function blipAddCustomTag(type){
+function blipRenderTags(type){
+  const presets=type==='cuisine'?BLIP_CUISINES:BLIP_STYLES;
+  const all=[...presets,...blipCustomTags[type]];
+  const preview=document.getElementById(`blip-${type}-preview`);
+  const restEl=document.getElementById(`blip-${type}-rest`);
+  if(!preview||!restEl) return;
+
+  // Measure how many tags fit in the first row using a hidden container
+  const W=preview.getBoundingClientRect().width||260;
+  const temp=document.createElement('div');
+  temp.style.cssText=`display:flex;flex-wrap:wrap;gap:5px;visibility:hidden;position:fixed;left:0;top:0;width:${W}px`;
+  document.body.appendChild(temp);
+  const els=all.map(t=>{ const el=blipMakeTagEl(type,t); temp.appendChild(el); return {t,el}; });
+  let firstY=null, cutoff=all.length;
+  els.forEach(({el},i)=>{
+    if(firstY===null) firstY=el.offsetTop;
+    if(el.offsetTop>firstY && cutoff===all.length) cutoff=i;
+  });
+  document.body.removeChild(temp);
+
+  preview.innerHTML=''; restEl.innerHTML='';
+  all.forEach((t,i)=>{ (i<cutoff?preview:restEl).appendChild(blipMakeTagEl(type,t)); });
+}
+
+function blipToggleSection(type){
+  blipSectionExpanded[type]=!blipSectionExpanded[type];
+  document.getElementById(`blip-${type}-expanded`).style.display=blipSectionExpanded[type]?'block':'none';
+  document.getElementById(`blip-${type}-arrow`).style.transform=blipSectionExpanded[type]?'rotate(90deg)':'';
+}
+
+function blipCustomKeydown(e, type){
+  if(e.key==='Enter') blipCommitCustomTag(type);
+}
+
+function blipCommitCustomTag(type){
   const input=document.getElementById(`blip-${type}-custom`);
   const term=input.value.trim().toLowerCase();
   if(!term) return;
+  input.value='';
   const presets=type==='cuisine'?BLIP_CUISINES:BLIP_STYLES;
-  if(presets.includes(term)||blipCustomTags[type].includes(term)) return;
-  if(input.value.endsWith(' ')||input.value.endsWith(',')){
-    // commit the tag when user presses space or comma
-    blipCustomTags[type].push(term.replace(/,$/,'').trim());
-    input.value='';
-    blipRenderTags(type);
+  if(presets.includes(term)||blipCustomTags[type].includes(term)){
+    blipTagState[type][term]='include';
+    blipRenderTags(type); blipRebuild();
+    return;
   }
-  // don't rebuild until committed — just re-render to show the pending typed value
+  blipPendingCustom={type, term};
+  document.getElementById('blip-save-tag-label').textContent=`Add "${term}" to your ${type} list?`;
+  document.getElementById('blip-save-tag-modal').style.display='flex';
+}
+
+function blipSaveTagAnswer(permanently){
+  document.getElementById('blip-save-tag-modal').style.display='none';
+  const {type, term}=blipPendingCustom;
+  if(!type||!term) return;
+  if(!blipCustomTags[type].includes(term)) blipCustomTags[type].push(term);
+  if(permanently) blipSaveCustomTagPermanently(type, term);
+  blipTagState[type][term]='include';
+  blipRenderTags(type); blipRebuild();
+  blipPendingCustom={type:null,term:null};
+}
+
+function blipInitTagFilters(){
+  blipLoadCustomTags();
+  blipSectionExpanded={cuisine:false, style:false};
+  blipRenderTags('cuisine');
+  blipRenderTags('style');
+}
+
+function blipResetTagFilters(){
+  blipTagState={cuisine:{}, style:{}};
+  blipRenderTags('cuisine');
+  blipRenderTags('style');
 }
 
 function blipTagsMatchPlace(place){
-  // Returns true if the place passes the active cuisine and style tag filters.
-  // Include rules: if ANY includes are set, place must match at least one.
-  // Exclude rules: if ANY excludes are set, place must NOT match any.
   const cuisineTag=(place.cuisine||'').toLowerCase();
   const amenityTag=(place.type||'').toLowerCase();
-  // Map Overpass amenity values to style labels
-  const amenityToStyle={
-    fast_food:'fast food', food_court:'food court',
-    bar:'bar', pub:'pub', cafe:'café',
-  };
+  const amenityToStyle={fast_food:'fast food',food_court:'food court',bar:'bar',pub:'pub',cafe:'café'};
   const placeStyle=amenityToStyle[amenityTag]||amenityTag;
-
   for(const type of ['cuisine','style']){
     const vals=blipTagState[type];
     const includes=Object.entries(vals).filter(([,v])=>v==='include').map(([k])=>k);
     const excludes=Object.entries(vals).filter(([,v])=>v==='exclude').map(([k])=>k);
     const placeVal=type==='cuisine'?cuisineTag:placeStyle;
-    // each cuisine tag from Overpass can be a semicolon-separated list
     const placeTerms=placeVal.split(/[;,]/).map(t=>t.trim()).filter(Boolean);
-
     if(includes.length>0){
       const matched=includes.some(inc=>placeTerms.some(t=>t.includes(inc)||inc.includes(t)));
       if(!matched) return false;
@@ -4024,17 +4118,6 @@ function blipTagsMatchPlace(place){
   return true;
 }
 
-function blipInitTagFilters(){
-  blipRenderTags('cuisine');
-  blipRenderTags('style');
-}
-
-function blipResetTagFilters(){
-  blipTagState={cuisine:{}, style:{}};
-  blipCustomTags={cuisine:[], style:[]};
-  blipRenderTags('cuisine');
-  blipRenderTags('style');
-}
 
 function haversineM(lat1,lon1,lat2,lon2){
   const R=6371000, r=Math.PI/180;
