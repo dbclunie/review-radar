@@ -526,7 +526,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.23</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.24</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -1590,7 +1590,7 @@ function exportBackup(){
     }
   };
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
-  const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
+  const stamp=new Date().toISOString().slice(0,19).replace(/-/g,'.').replace('T','_').replace(/:/g,'.');
   downloadBlob(blob,`review_radar_backup_${stamp}.json`);
   bumpCounter('rr_backup_count');
   const nowIso=new Date().toISOString();
@@ -1630,7 +1630,7 @@ function exportCSV(){
   });
   const csv=[headers.join(','), ...rows].join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
-  const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'.');
+  const stamp=new Date().toISOString().slice(0,19).replace(/-/g,'.').replace('T','_').replace(/:/g,'.');
   downloadBlob(blob,`review_radar_export_${stamp}.csv`);
   bumpCounter('rr_csv_export_count'); evaluateAchievements();
 }
@@ -3549,6 +3549,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.24',notes:[
+  'backup and CSV export filenames now include the time (24hr, HH.MM.SS) so multiple exports on the same day no longer overwrite each other \u2014 e.g. review_radar_backup_2026.09.22_14.05.03.json'
+]},
 {v:'3.23',notes:[
   'Blip cuisine and style filters: sections now collapse by default showing only the first row, tap the label or arrow to expand',
   'custom tags now ask save permanently vs this session only \u2014 permanently saved tags are stored locally and reappear every time you open Blip. session-only tags work identically but are forgotten when you leave',
