@@ -526,7 +526,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.24</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.25</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -2029,7 +2029,12 @@ let catSelectMode=false;
 let selectedCatIds=new Set();
 
 function renderCatSelect(){
-  registry.sort((a,b)=>a.label.localeCompare(b.label));
+  registry.sort((a,b)=>{
+    const countA=savedReviews.filter(r=>r.catId===a.id).length;
+    const countB=savedReviews.filter(r=>r.catId===b.id).length;
+    if(countB!==countA) return countB-countA; // most used first
+    return a.label.localeCompare(b.label);    // alpha for ties
+  });
   catDDIdx=0;
   updateCatDDSelected();
   renderRecentCategoryPills();
@@ -3549,6 +3554,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.25',notes:[
+  'categories now sort by most-used first (most reviews) rather than alphabetically, with alphabetical as a tiebreaker \u2014 applies to both the main category picker and the Blip filter dropdown'
+]},
 {v:'3.24',notes:[
   'backup and CSV export filenames now include the time (24hr, HH.MM.SS) so multiple exports on the same day no longer overwrite each other \u2014 e.g. review_radar_backup_2026.09.22_14.05.03.json'
 ]},
@@ -3846,7 +3854,13 @@ function toggleBlipFilters(){
 function populateBlipCategorySelect(){
   const sel=document.getElementById('blip-f-cat');
   const cats=[...new Set(getBlipCandidates().map(d=>d.catId))]
-    .map(id=>registry.find(c=>c.id===id)).filter(Boolean);
+    .map(id=>registry.find(c=>c.id===id)).filter(Boolean)
+    .sort((a,b)=>{
+      const countA=savedReviews.filter(r=>r.catId===a.id).length;
+      const countB=savedReviews.filter(r=>r.catId===b.id).length;
+      if(countB!==countA) return countB-countA;
+      return a.label.localeCompare(b.label);
+    });
   sel.innerHTML='<option value="all">all categories</option>'
     + cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
 }
