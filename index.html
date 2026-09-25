@@ -526,7 +526,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.26</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.27</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -1975,16 +1975,20 @@ function showAxisLabelTooltip(e){
 
 function radarSVG(axes, scores){
   const n = axes.length;
-  const cx=128, cy=95, rMax=56, rStep=rMax/SCALE;
+  // Large left margin (60px) gives left-anchored labels like "atmosphere (3)"
+  // room to render fully. overflow:visible on the SVG alone isn't enough because
+  // the parent container clips at its own boundary — the viewBox must include
+  // the space the labels actually occupy.
+  const margin={l:75,r:75,t:30,b:40};
+  const rMax=58, cx=margin.l+rMax+10, cy=margin.t+rMax+10;
+  const W=cx+rMax+margin.r+30, H=cy+rMax+margin.b+10;
+  const rStep=rMax/SCALE;
   function pt(i,r){ const a=(i/n)*2*Math.PI + Math.PI/2; return[cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
   function poly(r){ return Array.from({length:n},(_,i)=>pt(i,r).join(',')).join(' '); }
-  let svg=`<svg viewBox="0 0 256 190" style="width:100%;overflow:visible">`;
-  // grid rings — matched to the same brightness as the criteria labels (var(--text-3)),
-  // rather than the previous dim, heavily-opacity-reduced border color
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%">`;
   for(let k=1;k<=SCALE;k++){
     svg+=`<polygon points="${poly(k*rStep)}" fill="none" stroke="var(--text-3)" stroke-width="${k===SCALE?0.8:0.5}"/>`;
   }
-  // spokes — same brightness as the grid rings and labels
   for(let i=0;i<n;i++){const p=pt(i,rMax); svg+=`<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="var(--text-3)" stroke-width="0.5"/>`;}
   // data polygon
   const dpts = axes.map((a,i)=>pt(i,(scores[a]||0)*rStep).join(',')).join(' ');
@@ -3552,6 +3556,9 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.27',notes:[
+  'fixed radar axis labels actually clipping \u2014 the SVG viewBox now includes generous margins on all sides computed from real label geometry, so labels like \"atmosphere\" and \"facilities\" render fully without being cut off'
+]},
 {v:'3.26',notes:[
   'radar axis labels no longer get cut off at the screen edge \u2014 labels now scale font size by length (shorter labels larger, longer labels smaller) instead of truncating, and the SVG uses overflow:visible so nothing clips regardless of label length',
   'the dial screen axis name also now wraps instead of truncating with ...'
