@@ -526,7 +526,7 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
     </svg>
   </div>
   <span tabindex="0" style="font-family:'Special Elite',monospace;font-size:1.1em;color:var(--header-text);white-space:nowrap;cursor:pointer" onclick="openStreakCalendar()">Review Radar</span>
-  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.27</span>
+  <span tabindex="0" style="font-size:0.75em;color:var(--header-accent);text-align:right;cursor:pointer" onclick="openChangelog()">v3.28</span>
 </div>
 
 <!-- FIRST-RUN WELCOME -->
@@ -915,10 +915,22 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
 <!-- SCREEN 4b: map pin picker -->
 <div class="screen" id="s-map">
   <div class="hdr"><span id="hdr-map-cat"></span><span>pin location</span></div>
-  <div style="position:relative;margin-bottom:6px;flex-shrink:0">
+
+  <!-- mode toggle -->
+  <div style="display:flex;gap:4px;margin-bottom:8px;flex-shrink:0;background:var(--surface-2);border-radius:6px;padding:3px">
+    <div id="map-mode-name" tabindex="0"
+      style="flex:1;text-align:center;font-size:0.75em;padding:5px 0;border-radius:4px;cursor:pointer;background:var(--accent);color:var(--on-accent);font-weight:bold"
+      onclick="setMapMode('name')">&#128269; search by name</div>
+    <div id="map-mode-addr" tabindex="0"
+      style="flex:1;text-align:center;font-size:0.75em;padding:5px 0;border-radius:4px;cursor:pointer;color:var(--text-3)"
+      onclick="setMapMode('addr')">&#128205; enter address</div>
+  </div>
+
+  <!-- search-by-name panel -->
+  <div id="map-panel-name" style="position:relative;flex-shrink:0;margin-bottom:6px">
     <div style="display:flex;gap:6px">
       <div style="flex:1;min-width:0;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;box-sizing:border-box;padding:2px 8px">
-        <div id="map-search-input" contenteditable="true" role="textbox" data-placeholder="search for a place…"
+        <div id="map-search-input" contenteditable="true" role="textbox" data-placeholder="search for a place&hellip;"
           style="font-family:'Special Elite',monospace;font-size:0.82em;color:var(--text);outline:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;background:transparent;padding-top:6px"
           oninput="handleMapSearchInput(this)"
           onkeydown="if(event.key==='Enter'){event.preventDefault();runMapSearch(this.textContent.trim());}"></div>
@@ -926,13 +938,28 @@ body{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-
       <div tabindex="0" class="btn" style="flex-shrink:0;padding:0 12px" onclick="runMapSearch(document.getElementById('map-search-input').textContent.trim())">go</div>
     </div>
     <div id="map-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:0.5px solid var(--border-2);border-radius:6px;margin-top:4px;max-height:180px;overflow-y:auto;z-index:20"></div>
+    <div style="font-size:0.72em;color:var(--text-2);margin-top:5px;text-align:center">or drag the pin to where the review took place</div>
   </div>
-  <div style="font-size:0.72em;color:var(--text-2);margin-bottom:6px;text-align:center">or drag the pin to where the review took place</div>
+
+  <!-- enter-address panel -->
+  <div id="map-panel-addr" style="display:none;flex-shrink:0;margin-bottom:6px">
+    <div style="font-size:0.72em;color:var(--text-2);margin-bottom:5px">Use for new businesses, or multiple places in the same building (food courts etc.)</div>
+    <input id="map-addr-name" type="text" placeholder="business / place name (required)"
+      style="width:100%;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.82em;padding:7px 10px;outline:none;margin-bottom:5px;box-sizing:border-box">
+    <div style="display:flex;gap:6px">
+      <input id="map-addr-input" type="text" placeholder="street address&hellip;"
+        style="flex:1;background:var(--surface-2);border:0.5px solid var(--border-2);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.82em;padding:7px 10px;outline:none;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter') geocodeManualAddress()">
+      <div tabindex="0" class="btn" style="flex-shrink:0;padding:0 12px" onclick="geocodeManualAddress()">go</div>
+    </div>
+    <div id="map-addr-status" style="font-size:0.72em;color:var(--text-4);margin-top:4px;min-height:1.2em"></div>
+  </div>
+
   <div id="map-container" style="flex:1;border-radius:8px;overflow:hidden;min-height:200px"></div>
   <div id="map-coords" style="font-size:0.7em;color:var(--text-4);text-align:center;margin-top:6px">move the pin to set location</div>
   <div class="btn-row" style="flex-shrink:0;padding-top:10px">
     <div tabindex="0" class="btn" style="flex:1" onclick="showScreen('s-dial')">back</div>
-    <div tabindex="0" class="btn primary" style="flex:1" onclick="confirmMapLocation()">confirm →</div>
+    <div tabindex="0" class="btn primary" style="flex:1" onclick="confirmMapLocation()">confirm &rarr;</div>
   </div>
 </div>
 
@@ -2607,6 +2634,55 @@ function handleMapSearchInput(el){
 }
 
 let lastMapSearchResults=[];
+let mapMode='name', mapManualName='';
+
+function setMapMode(mode){
+  mapMode=mode;
+  const isAddr=mode==='addr';
+  document.getElementById('map-panel-name').style.display=isAddr?'none':'block';
+  document.getElementById('map-panel-addr').style.display=isAddr?'block':'none';
+  const onStyle='flex:1;text-align:center;font-size:0.75em;padding:5px 0;border-radius:4px;cursor:pointer;background:var(--accent);color:var(--on-accent);font-weight:bold';
+  const offStyle='flex:1;text-align:center;font-size:0.75em;padding:5px 0;border-radius:4px;cursor:pointer;color:var(--text-3)';
+  document.getElementById('map-mode-name').style.cssText=isAddr?offStyle:onStyle;
+  document.getElementById('map-mode-addr').style.cssText=isAddr?onStyle:offStyle;
+}
+
+async function geocodeManualAddress(){
+  const addrInput=document.getElementById('map-addr-input');
+  const nameInput=document.getElementById('map-addr-name');
+  const status=document.getElementById('map-addr-status');
+  const addr=addrInput.value.trim();
+  const name=nameInput.value.trim();
+  if(!name){ status.textContent='enter a business name first'; status.style.color='var(--bad)'; return; }
+  if(!addr){ status.textContent='enter an address first'; status.style.color='var(--bad)'; return; }
+  status.textContent='searching\u2026'; status.style.color='var(--text-4)';
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1&addressdetails=1`;
+    const resp=await fetch(url,{headers:{'Accept-Language':'en','User-Agent':'ReviewRadar/1.0'}});
+    const results=await resp.json();
+    if(!results.length){ status.textContent='address not found \u2014 try adding city or zip'; status.style.color='var(--bad)'; return; }
+    const r=results[0];
+    const lat=parseFloat(r.lat), lng=parseFloat(r.lon);
+    const a=r.address||{};
+    const parts=[
+      a.house_number&&a.road?`${a.house_number} ${a.road}`:a.road,
+      a.city||a.town||a.village||a.suburb,
+      a.state, a.postcode
+    ].filter(Boolean);
+    const resolvedAddr=parts.join(', ')||addr;
+    mapManualName=name;
+    mapPinLocation={lat, lng};
+    if(leafletMap){
+      leafletMap.setView([lat,lng],17);
+      if(leafletMarker) leafletMarker.setLatLng([lat,lng]);
+    }
+    status.textContent=`\uD83D\uDCCD ${resolvedAddr}`; status.style.color='var(--good)';
+    document.getElementById('map-coords').textContent=resolvedAddr;
+  }catch(e){
+    status.textContent='lookup failed \u2014 check your connection'; status.style.color='var(--bad)';
+  }
+}
+
 async function runMapSearch(query){
   if(!query || query.length<3) return;
   const resultsEl=document.getElementById('map-search-results');
@@ -2658,7 +2734,7 @@ function updateLocationDisplay(){
   if(curLocation && typeof curLocation==='object'){
     const {lat,lng,address}=curLocation;
     const mapsUrl=`https://maps.google.com/?q=${lat},${lng}`;
-    const label=address||`${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    const label=address||'location set';
     el.innerHTML=`<a href="${mapsUrl}" target="_blank" style="color:var(--accent);text-decoration:none;display:block;padding:2px 0">\uD83D\uDCCD ${label}</a>`;
   } else {
     el.textContent='';
@@ -2715,16 +2791,28 @@ async function fetchMapSnapshot(lat,lng){
 async function confirmMapLocation(){
   curLocation=mapPinLocation?{...mapPinLocation}:null;
   curMapSnapshot=null;
+
+  if(curLocation && mapMode==='addr' && mapManualName){
+    // Address mode: user typed the name — use it, never fall back to raw coords.
+    const statusText=document.getElementById('map-addr-status').textContent.replace(/^\S+ /,'').trim();
+    const addrTyped=document.getElementById('map-addr-input').value.trim();
+    const displayAddr=[mapManualName, statusText||addrTyped].filter(Boolean).join(', ');
+    curLocation.address=displayAddr;
+    curLocation.manualName=mapManualName;
+    updateLocationDisplay();
+    renderConfirm();
+    bumpCounter('rr_manual_pin_count'); evaluateAchievements();
+    curMapSnapshot=await fetchMapSnapshot(curLocation.lat,curLocation.lng);
+    preGenerateShareFile();
+    return;
+  }
+
   updateLocationDisplay();
   renderConfirm();
   if(curLocation){
     bumpCounter('rr_manual_pin_count'); evaluateAchievements();
-    // fetch address + map snapshot in background
     const addr=await reverseGeocode(curLocation.lat,curLocation.lng);
-    if(addr && curLocation){
-      curLocation.address=addr;
-      updateLocationDisplay();
-    }
+    if(addr && curLocation){ curLocation.address=addr; updateLocationDisplay(); }
     curMapSnapshot=await fetchMapSnapshot(curLocation.lat,curLocation.lng);
     preGenerateShareFile();
   }
@@ -2737,6 +2825,12 @@ function openMapPicker(){
   document.getElementById('hdr-map-cat').textContent=(curCat?curCat.label:'').toUpperCase();
   document.getElementById('map-search-input').textContent='';
   document.getElementById('map-search-results').style.display='none';
+  // Reset to name-search mode and clear manual fields
+  mapManualName='';
+  setMapMode('name');
+  document.getElementById('map-addr-name').value='';
+  document.getElementById('map-addr-input').value='';
+  document.getElementById('map-addr-status').textContent='';
   showScreen('s-map');
   // Init map after screen is visible
   setTimeout(()=>{
@@ -3556,6 +3650,11 @@ function closeAchievementsPage(){
 }
 // ── CHANGELOG ─────────────────────────────────────────────────────────────
 const CHANGELOG=[
+{v:'3.28',notes:[
+  'location entry now has two modes: search by name (existing) and enter address (new)',
+  'address mode: type the business name yourself and a street address to geocode \u2014 solves new businesses not yet on the map, and multiple places in the same building like food courts',
+  'raw coordinates (lat/lon) no longer appear anywhere \u2014 always replaced with a human-readable address or the name you typed'
+]},
 {v:'3.27',notes:[
   'fixed radar axis labels actually clipping \u2014 the SVG viewBox now includes generous margins on all sides computed from real label geometry, so labels like \"atmosphere\" and \"facilities\" render fully without being cut off'
 ]},
